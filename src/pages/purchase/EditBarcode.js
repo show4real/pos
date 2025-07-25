@@ -21,17 +21,41 @@ export class EditBarcode extends Component {
             submitted: false,
             scannedBarcodes: [],
         };
-        this.inputRef = createRef();
+        
+        this.inputRef = React.createRef();
     }
 
-    componentDidMount() {
-        // Focus the input when component mounts
-        setTimeout(() => {
-            if (this.inputRef.current) {
-                this.inputRef.current.focus();
-            }
-        }, 100);
+   componentDidMount() {
+      
+   
+        window.addEventListener("keydown", this.handleKeyPress);
+     }
+
+    componentWillUnmount() {
+    window.removeEventListener("keydown", this.handleKeyPress);
+  }
+
+  handleKeyPress = (e) => {
+    const tag = document.activeElement.tagName;
+
+    // If not typing in input or textarea, allow global input
+    if (tag !== "INPUT" && tag !== "TEXTAREA") {
+      if (this.inputRef.current) {
+        this.inputRef.current.focus(); // autofocus input
+      }
+
+      if (/^[a-zA-Z0-9]$/.test(e.key)) {
+        this.setState((prev) => ({
+          input: prev.input + e.key,
+        }));
+      }
+
+      if (e.key === "Enter") {
+        this.addScannedBarcode();
+        this.setState({ input: "" });
+      }
     }
+  };
 
     onChange = (e, state) => {
         this.setState({ [state]: e });
@@ -43,11 +67,7 @@ export class EditBarcode extends Component {
         });
     };
 
-    handleKeyPress = (e) => {
-        if (e.key === 'Enter' && this.state.barcode.trim()) {
-            this.addScannedBarcode();
-        }
-    };
+   
 
     addScannedBarcode = () => {
         const { barcode, scannedBarcodes } = this.state;
@@ -66,14 +86,6 @@ export class EditBarcode extends Component {
         this.setState({
             scannedBarcodes: [...filteredBarcodes, newBarcode],
         });
-
-        // Refocus input for next scan and select text
-        setTimeout(() => {
-            if (this.inputRef.current) {
-                this.inputRef.current.focus();
-                this.inputRef.current.select();
-            }
-        }, 0);
     };
 
     removeScannedBarcode = (id) => {
@@ -159,12 +171,12 @@ export class EditBarcode extends Component {
                                     <span className="input-group-text bg-light" style={{ borderRadius: "8px 0 0 8px" }}>
                                         <i className="fas fa-scan text-muted"></i>
                                     </span>
-                                    <Input
+                                    <input
                                         ref={this.inputRef}
                                         type="text"
                                         value={barcode}
                                         onChange={this.handleBarcodeChange}
-                                        onKeyPress={this.handleKeyPress}
+                                       
                                         placeholder="Scan or enter barcode here"
                                         style={{
                                             height: "50px",

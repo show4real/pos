@@ -74,13 +74,42 @@ export class PosOrderIndex extends Component {
 
     this.searchDebounced = debounce(this.getPurchaseOrders, 500);
     this.searchThrottled = throttle(this.getPurchaseOrders, 500);
+    this.inputRef = React.createRef();
   }
 
   componentDidMount() {
     this.getPurchaseOrders();
     this.getClients();
     this.getCompany();
+
+     window.addEventListener("keydown", this.handleKeyPress);
   }
+
+  componentWillUnmount() {
+    window.removeEventListener("keydown", this.handleKeyPress);
+  }
+
+  handleKeyPress = (e) => {
+    const tag = document.activeElement.tagName;
+
+    // If not typing in input or textarea, allow global input
+    if (tag !== "INPUT" && tag !== "TEXTAREA") {
+      if (this.inputRef.current) {
+        this.inputRef.current.focus(); // autofocus input
+      }
+
+      if (/^[a-zA-Z0-9]$/.test(e.key)) {
+        this.setState((prev) => ({
+          input: prev.input + e.key,
+        }));
+      }
+
+      if (e.key === "Enter") {
+        console.log("Submitted input:", this.state.input);
+        this.setState({ input: "" });
+      }
+    }
+  };
 
   getClients = () => {
     const { page, rows, search, clients, search_client } = this.state;
@@ -358,6 +387,17 @@ export class PosOrderIndex extends Component {
     }
   }
 
+  clearSearch = () => {
+    this.setState({ search: "" }, () => {
+      const val = this.state.search;
+      if (val.length < 5) {
+        this.searchThrottled(val);
+      } else {
+        this.searchDebounced(val);
+      }
+    });
+  };
+
   formatCurrency(x) {
     if (x !== null && x !== 0) {
       const parts = x.toString().split(".");
@@ -469,18 +509,49 @@ export class PosOrderIndex extends Component {
                 <Col md={8}>
                   <Row>
                     <Col md="6">
-                      <div className="input-group">
-                        <Input
-                          placeholder="Search products..."
-                          className="form-control"
+                      
+
+                      <div style={{ maxWidth: "500px", marginBottom: "10px" }}>
+                      <div style={{ display: "flex", alignItems: "center" }}>
+                        <input
+                          ref={this.inputRef}
+                          id="show"
                           value={search}
                           onChange={this.handleSearch}
                           autoFocus
+                          placeholder="Search for products using barcode scanner or type manually..."
+                          style={{
+                            flex: 1,
+                            height: "55px",
+                            padding: "0 12px",
+                            fontSize: "16px",
+                            border: "1px solid #ccc",
+                            borderTopLeftRadius: "5px",
+                            borderBottomLeftRadius: "5px",
+                            borderRight: search ? "none" : "1px solid #ccc",
+                            outline: "none",
+                          }}
                         />
-                        <Button variant="secondary" className="btn-icon">
-                          <i className="fa fa-search" />
-                        </Button>
+                        {search && (
+                          <button
+                            onClick={this.clearSearch}
+                            style={{
+                              height: "55px",
+                              width: "50px",
+                              fontSize: "24px",
+                              backgroundColor: "#f8f9fa",
+                              border: "1px solid #ccc",
+                              borderLeft: "none",
+                              borderTopRightRadius: "5px",
+                              borderBottomRightRadius: "5px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            &times;
+                          </button>
+                        )}
                       </div>
+                    </div>
                     </Col>
                   </Row>
                 </Col>

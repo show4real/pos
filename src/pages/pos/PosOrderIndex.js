@@ -66,6 +66,7 @@ export class PosOrderIndex extends Component {
 
     this.searchDebounced = debounce(this.getPurchaseOrders, 500);
     this.searchThrottled = throttle(this.getPurchaseOrders, 500);
+    this.inputRef = React.createRef();
   }
 
   componentDidMount() {
@@ -76,7 +77,37 @@ export class PosOrderIndex extends Component {
 
     const savedCartItem = JSON.parse(localStorage.getItem("cartItem")) || [];
     this.setState({ cartItem: savedCartItem });
+
+    window.addEventListener("keydown", this.handleKeyPress);
+
   }
+
+ 
+  componentWillUnmount() {
+    window.removeEventListener("keydown", this.handleKeyPress);
+  }
+
+  handleKeyPress = (e) => {
+    const tag = document.activeElement.tagName;
+    
+    // If not typing in input or textarea, allow global input
+    if (tag !== "INPUT" && tag !== "TEXTAREA") {
+      if (this.inputRef.current) {
+        this.inputRef.current.focus(); // autofocus input
+      }
+
+      if (/^[a-zA-Z0-9]$/.test(e.key)) {
+        this.setState((prev) => ({
+          input: prev.input + e.key,
+        }));
+      }
+
+      if (e.key === "Enter") {
+        console.log("Submitted input:", this.state.input);
+        this.setState({ input: "" });
+      }
+    }
+  };
 
   getClients = () => {
     const { page, rows, search, clients, search_client } = this.state;
@@ -305,12 +336,24 @@ export class PosOrderIndex extends Component {
     }
   }
 
-
-
   clearCart = () => {
-    this.setState({ cartItem: [], cart_details: [], }); // or whatever state you want to reset
+    this.setState({ cartItem: [], cart_details: [] }, () => {
+      localStorage.removeItem("cartItem");
+      localStorage.removeItem("cart_details");
+      
+    });
   };
 
+  clearSearch = () => {
+    this.setState({ search: "" }, () => {
+      const val = this.state.search;
+      if (val.length < 5) {
+        this.searchThrottled(val);
+      } else {
+        this.searchDebounced(val);
+      }
+    });
+  };
 
   showToast = (msg) => {
     toast(<div style={{ padding: 20, color: "success" }}>{msg}</div>);
@@ -367,7 +410,21 @@ export class PosOrderIndex extends Component {
     } else {
       items.push(addToCart);
     }
-    this.setState({ cartItem: items }, this.updateCartItemInLocalStorage);
+    
+    this.setState({ cartItem: items }, () => {
+      this.updateCartItemInLocalStorage();
+      
+    });
+    
+    this.setState({ search: "" }, () => {
+      if (this.state.search < 5) {
+        this.searchThrottled(this.state.search);
+      } else {
+        this.searchDebounced(this.state.search);
+      }
+    });
+
+    
   };
 
   inCart = (cartId) => {
@@ -414,6 +471,8 @@ export class PosOrderIndex extends Component {
       }
     });
   };
+
+ 
 
   handlePriceChange = (event, index) => {
     const newPrice = parseFloat(event.target.value) || 0;
@@ -493,7 +552,7 @@ export class PosOrderIndex extends Component {
               </div>
             </Col>
           </Row>
-          <Row className="mb-4">
+          <Row className="mb-2">
             <Col lg="12">
               <div className="d-flex align-items-center justify-content-between">
                 <div className="stock-header">
@@ -501,12 +560,12 @@ export class PosOrderIndex extends Component {
                     <i className="fas fa-cube me-2"></i>
                     Stock Inventory
                   </h4>
-                  <div className="stock-count d-flex align-items-center">
+                  {/* <div className="stock-count d-flex align-items-center">
                     <span className="badge bg-primary-subtle text-primary fs-6 px-3 py-2 rounded-pill">
                       <i className="fas fa-boxes me-1"></i>
                       {total} {total === 1 ? 'Item' : 'Items'} Available
                     </span>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Optional: Add action buttons or filters */}
@@ -535,8 +594,8 @@ export class PosOrderIndex extends Component {
                           <i className="fas fa-check-circle fa-sm"></i>
                         </div>
                         <div>
-                          <small className="text-muted d-block">In Stock</small>
-                          <span className="fw-bold text-success">{total}</span>
+                          <div className="d-block" style={{fontSize:20}}>Available</div>
+                          <span className="fw-bold text-success">{total} Items</span>
                         </div>
                       </div>
                     </div>
@@ -583,100 +642,100 @@ export class PosOrderIndex extends Component {
                       </div>
                     </div>
                   </Col> */}
+                  <Col md={5}>
+                    <div style={{ maxWidth: "500px", marginBottom: "10px" }}>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <input
+            ref={this.inputRef}
+            id="show"
+            value={search}
+            onChange={this.handleSearch}
+            autoFocus
+            placeholder="Search for products using barcode scanner or type manually..."
+            style={{
+              flex: 1,
+              height: "55px",
+              padding: "0 12px",
+              fontSize: "16px",
+              border: "1px solid #ccc",
+              borderTopLeftRadius: "5px",
+              borderBottomLeftRadius: "5px",
+              borderRight: search ? "none" : "1px solid #ccc",
+              outline: "none",
+            }}
+          />
+          {search && (
+            <button
+              onClick={this.clearSearch}
+              style={{
+                height: "55px",
+                width: "50px",
+                fontSize: "24px",
+                backgroundColor: "#f8f9fa",
+                border: "1px solid #ccc",
+                borderLeft: "none",
+                borderTopRightRadius: "5px",
+                borderBottomRightRadius: "5px",
+                cursor: "pointer",
+              }}
+            >
+              &times;
+            </button>
+          )}
+        </div>
+      </div>
+                  </Col>
+                  <Col md={4} className="text-end pt-2">
+                    <div className="btn-toolbar justify-content-end">
+                      <ButtonGroup>
+                        {cartItem !== null ? (
+                          <>
+                            <Button variant="outline-success" size="sm">
+                              Cart ({cartItem.length})
+                            </Button>
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              onClick={this.clearCart}
+                            >
+                              Clear Cart
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="outline-success"
+                            size="sm"
+                            onClick={() => this.props.history.push("/pos_sales")}
+                          >
+                            View Sales
+                          </Button>
+                        )}
+
+                        {cart_details.length > 0 && (
+                          <ReactToPrint
+                            trigger={() => (
+                              <Button variant="outline-success" size="sm">
+                                Print Invoice
+                              </Button>
+                            )}
+                            content={() => this.componentRef}
+                          />
+                        )}
+                      </ButtonGroup>
+                    </div>
+                  </Col>
+
                 </Row>
               </div>
             </Col>
           </Row>
 
           <Card border="light" className="shadow-sm mb-4">
-            <Row className="align-items-center mb-3">
-              {/* Search Input Section */}
-              <Col md={8}>
-                <Row>
-                  <Col md={5}>
-                    <InputGroup style={{ marginBottom: '10px' }}>
-                      <Input
-                        placeholder="Search..."
-                        id="show"
-                        value={search}
-                        onChange={this.handleSearch}
-                        autoFocus
-                        style={{
-                          height: '45px',
-                          borderTopLeftRadius: '5px',
-                          borderBottomLeftRadius: '5px',
-                        }}
-                      />
-                      {search && (
-                        <Button
-                          variant="outline-secondary"
-                          onClick={() => this.setState({ search: "" }, () => {
-                            if (this.state.search < 5) {
-                              this.searchThrottled(this.state.search);
-                            } else {
-                              this.searchDebounced(this.state.search);
-                            }
-                          })}
-                          style={{
-                            height: '45px',
-                            borderTopRightRadius: '5px',
-                            borderBottomRightRadius: '5px',
-                          }}
-                        >
-                          &times;
-                        </Button>
-                      )}
-                    </InputGroup>
-                  </Col>
 
-                </Row>
-              </Col>
-
-              {/* Button Group Section */}
-              <Col md={4} className="text-end pt-2">
-                <div className="btn-toolbar justify-content-end">
-                  <ButtonGroup>
-                    {cartItem !== null ? (
-                      <>
-                        <Button variant="outline-success" size="sm">
-                          Cart ({cartItem.length})
-                        </Button>
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          onClick={this.clearCart}
-                        >
-                          Clear Cart
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        variant="outline-success"
-                        size="sm"
-                        onClick={() => this.props.history.push("/pos_sales")}
-                      >
-                        View Sales
-                      </Button>
-                    )}
-
-                    {cart_details.length > 0 && (
-                      <ReactToPrint
-                        trigger={() => (
-                          <Button variant="outline-success" size="sm">
-                            Print Invoice
-                          </Button>
-                        )}
-                        content={() => this.componentRef}
-                      />
-                    )}
-                  </ButtonGroup>
-                </div>
-              </Col>
-            </Row>
 
             <Row className="g-4">
               {/* Left Column - Product Inventory */}
-              <Col md={7}>
+              <Col md={6}>
                 <Card className="h-100 shadow-sm border-0">
                   <Card.Header className="bg-primary text-white py-3">
                     <h5 className="mb-0">
@@ -707,15 +766,18 @@ export class PosOrderIndex extends Component {
                                       <h6 className="mb-2 text-dark fw-bold">
                                         {stock.product_name}
                                       </h6>
-                                      <div className="product-meta" style={{ fontSize: 20 }}>
-                                        <span className="badge bg-secondary me-2">
-                                          <i className="fas fa-barcode me-1"></i>
-                                          {stock.tracking}
-                                        </span>
-                                        <span className="badge bg-secondary me-2">
+                                      <div>
+                                        <span className="badge bg-secondary me-2" style={{ fontSize: 15 }}>
                                           <i className="fas fa-barcode me-1"></i>
                                           Barcode {stock.barcode}
                                         </span>
+                                      </div>
+                                      <div className="product-meta" style={{ fontSize: 20 }}>
+                                        {/* <span className="badge bg-secondary me-2">
+                                          <i className="fas fa-barcode me-1"></i>
+                                          {stock.tracking}
+                                        </span> */}
+
                                         <span className="badge bg-success me-2">
                                           <i className="fas fa-cube me-1"></i>
                                           Stock: {stock.in_stock}
@@ -800,7 +862,7 @@ export class PosOrderIndex extends Component {
               </Col>
 
               {/* Right Column - Shopping Cart & Checkout */}
-              <Col md={5}>
+              <Col md={6}>
                 <Card className="h-100 shadow-sm border-0">
                   <Card.Header className="bg-success text-white py-3">
                     <div className="d-flex justify-content-between align-items-center">
@@ -929,7 +991,7 @@ export class PosOrderIndex extends Component {
                                 Customer & Payment Details
                               </h6>
                               <Row className="g-3">
-                                <Col md={4}>
+                                <Col md={6}>
                                   <Form.Group>
                                     <Form.Label className="fw-semibold mb-2">Customer</Form.Label>
                                     <Select
@@ -953,7 +1015,7 @@ export class PosOrderIndex extends Component {
                                   </Form.Group>
                                 </Col>
 
-                                <Col md={4}>
+                                <Col md={6}>
                                   <Form.Group>
                                     <Form.Label className="fw-semibold mb-2">New Customer</Form.Label>
                                     <Button
@@ -969,10 +1031,10 @@ export class PosOrderIndex extends Component {
                                   </Form.Group>
                                 </Col>
 
-                                
+
                               </Row>
-                              <Row>
-                                <Col md={4} className="pt-2">
+                              <Row className="pt-4">
+                                <Col md={6} className="">
                                   <Form.Group>
                                     <Form.Label className="fw-semibold mb-2">Payment Method</Form.Label>
                                     <Form.Select
@@ -990,12 +1052,6 @@ export class PosOrderIndex extends Component {
                                     </Form.Select>
                                   </Form.Group>
                                 </Col>
-                              </Row>
-                            </div>
-
-                            {/* Payment Amount & Checkout */}
-                            <div className="p-3">
-                              <Row className="align-items-end">
                                 <Col md={6}>
                                   <Form.Group>
                                     <Form.Label className="fw-semibold mb-2">
@@ -1023,6 +1079,13 @@ export class PosOrderIndex extends Component {
                                     />
                                   </Form.Group>
                                 </Col>
+                              </Row>
+                            </div>
+
+                            {/* Payment Amount & Checkout */}
+                            <div className="p-3">
+                              <Row className="align-items-end">
+
 
                                 <Col md={6}>
                                   <Button
