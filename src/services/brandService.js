@@ -12,6 +12,15 @@ export function getbrands(data) {
     return fetch(`${settings.API_URL}brands`, requestOptions).then(authService.handleResponse);
 }
 
+export function getbarcodes(data) {
+    const requestOptions = {
+        method: 'POST',
+        headers: authHeader(),
+        body: JSON.stringify(data)
+    };
+    return fetch(`${settings.API_URL}barcodes`, requestOptions).then(authService.handleResponse);
+}
+
 export function addBrands(data) {
     const requestOptions = {
         method: 'POST',

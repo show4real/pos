@@ -54,6 +54,7 @@ import OrderIndex from "./pages/purchase/OrderIndex";
 import BranchIndex from "./pages/stocks/BranchIndex";
 import CreditorIndex from "./pages/creditors/CreditorIndex";
 import ExpenseIndex from "./pages/expenses/ExpenseIndex";
+import Barcode from "./pages/barcode/Barcode";
 export let routes = [
   {
     path: "/",
@@ -112,4 +113,10 @@ export let routes = [
     title: "Transactions",
     icon: faCalculator,
   },
+  // {
+  //   path: "/barcode",
+  //   component: Barcode,
+  //   title: "Barcode",
+  //   icon: faCalculator,
+  // },
 ];

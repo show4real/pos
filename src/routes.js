@@ -5,6 +5,7 @@ export let Routes = {
   EditInvoice: { path: "/invoice/:id" },
   EditPosItems: { path: "/pos/:id" },
   AddInvoice: { path: "/new/invoice" },
+  Barcode: { path: "/barcode" },
   ClientPayments: { path: "/client/payments/:id" },
 
   Order: { path: "/purchase_order/:id/product/:product_id" },
