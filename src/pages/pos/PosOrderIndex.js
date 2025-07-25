@@ -475,7 +475,7 @@ export class PosOrderIndex extends Component {
         )}
 
         {/* {loading && <SpinDiv text={"Loading..."} />} */}
-        <div style={{ margin: 10 }}>
+        <div style={{ margin: 5 }}>
           <Row>
             <Col lg="12">
               <div className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
@@ -525,7 +525,7 @@ export class PosOrderIndex extends Component {
               </div>
 
               {/* Optional: Stock summary cards */}
-              <div className="stock-summary mt-3">
+              <div className="stock-summary mt-2">
                 <Row className="g-2">
                   <Col md={3}>
                     <div className="stock-card bg-success-subtle border border-success-subtle rounded p-2">
@@ -969,7 +969,10 @@ export class PosOrderIndex extends Component {
                                   </Form.Group>
                                 </Col>
 
-                                <Col md={4}>
+                                
+                              </Row>
+                              <Row>
+                                <Col md={4} className="pt-2">
                                   <Form.Group>
                                     <Form.Label className="fw-semibold mb-2">Payment Method</Form.Label>
                                     <Form.Select

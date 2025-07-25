@@ -648,7 +648,7 @@ export class InvoiceIndex extends Component {
                               Edit
                             </Button>
                           )}
-                          <Button
+                          {user.admin == 1 && <Button
                             variant="outline-danger"
                             // disabled={invoice.payment_type == 'POS' ? true : false}
                             onClick={() => {
@@ -657,7 +657,7 @@ export class InvoiceIndex extends Component {
                             size="sm"
                           >
                             Delete
-                          </Button>
+                          </Button>}
                         </ButtonGroup>
                       </td>
                     </tr>

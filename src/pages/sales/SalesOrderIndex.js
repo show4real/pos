@@ -396,6 +396,19 @@ export class SalesOrderIndex extends Component {
 
     return (
       <Row className="mb-4">
+         <Col md={4}>
+          <Card className="border-success">
+            <Card.Body className="text-center">
+              <div className="d-flex align-items-center justify-content-center mb-2">
+                <i className="fas fa-boxes text-success fa-2x me-2"></i>
+                <div>
+                  <h5 className="mb-0 text-success">{(total_amount)}</h5>
+                  <small className="text-muted fw-bold">Total Stock</small>
+                </div>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
         <Col md={4}>
           <Card className="border-info">
             <Card.Body className="text-center">
@@ -403,7 +416,7 @@ export class SalesOrderIndex extends Component {
                 <i className="fas fa-boxes text-info fa-2x me-2"></i>
                 <div>
                   <h5 className="mb-0 text-info">{this.formatNumber(total_instock)}</h5>
-                  <small className="text-muted fw-bold">Total Available</small>
+                  <small className="text-muted fw-bold">Instock</small>
                 </div>
               </div>
             </Card.Body>
@@ -424,19 +437,7 @@ export class SalesOrderIndex extends Component {
           </Card>
         </Col>
         
-        <Col md={4}>
-          <Card className="border-success">
-            <Card.Body className="text-center">
-              <div className="d-flex align-items-center justify-content-center mb-2">
-                <i className="fas fa-boxes text-success fa-2x me-2"></i>
-                <div>
-                  <h5 className="mb-0 text-success">{(total_amount)}</h5>
-                  <small className="text-muted fw-bold">Total</small>
-                </div>
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
+       
       </Row>
     );
   };
