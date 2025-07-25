@@ -353,7 +353,7 @@ export class Profile extends Component {
                         }}
                       />
                     </Col>
-                    <Col md={6} style={{ paddingTop: 15 }}>
+                    {/* <Col md={6} style={{ paddingTop: 15 }}>
                       <Form.Group className="mb-2">
                         <Form.Label style={{ paddingRight: 10 }}>
                           Sell By Serial No
@@ -378,7 +378,7 @@ export class Profile extends Component {
                           type="checkbox"
                         />
                       </Form.Group>
-                    </Col>
+                    </Col> */}
                   </Row>
 
                   <Row>

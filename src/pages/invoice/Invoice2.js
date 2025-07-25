@@ -42,7 +42,7 @@ export class Invoice extends React.Component {
   combineItems = (items) => {
     return items.reduce((acc, item) => {
       const existingItem = acc.find(
-        (i) => i.order.product_name === item.order.product_name
+        (i) => i.product_name === item.product_name
       );
       if (existingItem) {
         existingItem.qty_sold += item.qty_sold;
@@ -153,7 +153,7 @@ export class Invoice extends React.Component {
                 {combinedItems.map((item, index) => (
                   <tr key={index}>
                     <td style={{ fontSize: "20px", fontWeight: "bold" }}>
-                      {item.order.product_name}
+                      {item.product_name}
                     </td>
                     <td style={{ fontSize: "20px", fontWeight: "bold" }}>
                       {item.qty_sold}

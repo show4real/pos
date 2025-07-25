@@ -722,7 +722,7 @@ export class Order extends Component {
                     </Card.Body>
                   </Card>
                 </Row>
-                
+
               </Col>
             </Row>
             <Row>
@@ -739,13 +739,12 @@ export class Order extends Component {
                           <tr>
                             <th className="border-0">Product</th>
                             <th className="border-0">Barcode</th>
-                            <th className="border-0">Instock</th>
-
-                            <th className="border-0">Order unit</th>
+                            <th className="border-0">Available</th>
+                            <th className="border-0">Total Order</th>
                             <th className="border-0">Purchase Price</th>
                             <th className="border-0">Selling Price</th>
                             <th className="border-0">Action</th>
-                            
+
                           </tr>
                         </thead>
                         <tbody>
@@ -759,7 +758,7 @@ export class Order extends Component {
                               <td>{this.formatC(stock.unit_selling_price)}</td>
                               <td>
                                 <ButtonGroup>
-                                  
+
                                   <Button
                                     variant="outline-primary"
                                     type="submit"
@@ -770,40 +769,40 @@ export class Order extends Component {
                                   >
                                     Update Barcode
                                   </Button>
-                                
+
                                   {stock.unit_selling_price !== null && (
-                                  <Button
-                                    variant="outline-primary"
-                                    type="submit"
-                                    disabled={saving}
-                                    onClick={() =>
-                                      this.toggleChangePrice(stock)
-                                    }
-                                  >
-                                    Edit Prices
-                                  </Button>
-                                )}
-                                {stock.quantity_moved > 0 && (
-                                  <Button
-                                    variant="outline-primary"
-                                    type="submit"
-                                    disabled={saving}
-                                    onClick={() =>
-                                      this.toggleAddMoreOrder(stock)
-                                    }
-                                  >
-                                    Add more Quantity
-                                  </Button>
-                                )}
+                                    <Button
+                                      variant="outline-primary"
+                                      type="submit"
+                                      disabled={saving}
+                                      onClick={() =>
+                                        this.toggleChangePrice(stock)
+                                      }
+                                    >
+                                      Edit Prices
+                                    </Button>
+                                  )}
+                                  {stock.quantity_moved > 0 && (
+                                    <Button
+                                      variant="outline-primary"
+                                      type="submit"
+                                      disabled={saving}
+                                      onClick={() =>
+                                        this.toggleAddMoreOrder(stock)
+                                      }
+                                    >
+                                      Add more Quantity
+                                    </Button>
+                                  )}
                                 </ButtonGroup>
-                                
+
                               </td>
-                              
+
                             </tr>
                           }
                         </tbody>
                       </Table>
-                      
+
                     </Card.Body>
                   </Col>
                   <Col xs={12}>
@@ -820,7 +819,7 @@ export class Order extends Component {
                             <tr>
                               <th className="border-0">Tracking Id</th>
                               <th className="border-0">Status</th>
-                              <th className="border-0">Returned Qty</th>
+                              {/* <th className="border-0">Returned Qty</th> */}
                               <th className="border-0">Moved Qty</th>
                               <th className="border-0">created at</th>
                               <th className="border-0">Received at</th>
@@ -830,7 +829,7 @@ export class Order extends Component {
                             <tr>
                               <td>{stock.tracking_id}</td>
                               <td>{stock.status}</td>
-                              <td>{stock.quantity_returned}</td>
+                              {/* <td>{stock.quantity_returned}</td> */}
                               <td>{stock.quantity_moved}</td>
                               <td>
                                 {moment(stock.created_at).format("MMM DD YYYY")}
@@ -838,30 +837,30 @@ export class Order extends Component {
                               <td>
                                 {stock.received_at !== null
                                   ? moment(stock.received_at).format(
-                                      "MMM DD YYYY"
-                                    )
+                                    "MMM DD YYYY"
+                                  )
                                   : ""}
                               </td>
                             </tr>
                             <tr>
                               <td>
                                 <ButtonGroup>
-                                {stock.status == "Pending" && (
-                                  <Button
-                                    variant="outline-primary"
-                                    type="submit"
-                                    disabled={saving}
-                                    onClick={() =>
-                                      this.toggleConfirmOrder({
-                                        ...stock,
-                                        ...{ cancel: 1 },
-                                      })
-                                    }
-                                  >
-                                    Reject order
-                                  </Button>
-                                )}
-                                {stock.status == "Confirmed" &&
+                                  {stock.status == "Pending" && (
+                                    <Button
+                                      variant="outline-primary"
+                                      type="submit"
+                                      disabled={saving}
+                                      onClick={() =>
+                                        this.toggleConfirmOrder({
+                                          ...stock,
+                                          ...{ cancel: 1 },
+                                        })
+                                      }
+                                    >
+                                      Reject order
+                                    </Button>
+                                  )}
+                                  {/* {stock.status == "Confirmed" &&
                                       stock.stock_quantity !==
                                         stock.quantity_moved &&
                                       company.sell_by_serial_no !== 1 && (
@@ -878,68 +877,56 @@ export class Order extends Component {
                                         >
                                           Return Order
                                         </Button>
-                                      )}
-                                       {stock.status == "Confirmed" &&
-                                      company.sell_by_serial_no == 1 && (
-                                        <Button
-                                          variant="outline-primary"
-                                          type="submit"
-                                          disabled={saving}
-                                          onClick={() =>
-                                            this.toggleReturnOrder()
-                                          }
-                                        >
-                                          Return Order
-                                        </Button>
-                                      )}
-                                       {stock.status == "Confirmed" &&
-                                      stock.in_stock > 0 &&
-                                      company.sell_by_serial_no !== 1 && (
-                                        <Button
-                                          variant="outline-primary"
-                                          type="submit"
-                                          disabled={saving}
-                                          onClick={() =>
-                                            this.toggleConfirmOrder({
-                                              ...stock,
-                                              ...{ move: 1 },
-                                            })
-                                          }
-                                        >
-                                          Move Order
-                                        </Button>
-                                      )}
-                                       {stock.status === "Confirmed" ? (
-                                  <Button
-                                    variant="outline-success"
-                                    type="submit"
-                                    onClick={() => {
-                                      //console.log('111')
-                                      this.props.history.push("/stocked");
-                                    }}
-                                  >
-                                    View Stock
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    variant="outline-primary"
-                                    type="submit"
-                                    disabled={saving}
-                                    onClick={() =>
-                                      this.toggleConfirmOrder({
-                                        ...stock,
-                                        ...{ confirm: 1 },
-                                      })
-                                    }
-                                  >
-                                    {stock.status == "Rejected"
-                                      ? "Cancel Rejection"
-                                      : "Confirm Order"}
-                                  </Button>
-                                )}
+                                      )} */}
+
+                                  {stock.status == "Confirmed" &&
+                                    stock.in_stock > 0 &&
+                                    company.sell_by_serial_no !== 1 && (
+                                      <Button
+                                        variant="outline-primary"
+                                        type="submit"
+                                        disabled={saving}
+                                        onClick={() =>
+                                          this.toggleConfirmOrder({
+                                            ...stock,
+                                            ...{ move: 1 },
+                                          })
+                                        }
+                                      >
+                                        Move Order
+                                      </Button>
+                                    )}
+                                  {stock.status === "Confirmed" ? (
+                                    <Button
+                                      variant="outline-success"
+                                      type="submit"
+                                      onClick={() => {
+                                        //console.log('111')
+                                        this.props.history.push("/stocked");
+                                      }}
+                                    >
+                                      View Stock
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="outline-primary"
+                                      type="submit"
+                                      disabled={saving}
+                                      onClick={() =>
+                                        this.toggleConfirmOrder({
+                                          ...stock,
+                                          ...{ confirm: 1 },
+                                        })
+                                      }
+                                    >
+                                      {stock.status == "Rejected"
+                                        ? "Cancel Rejection"
+                                        : "Confirm Order"}
+                                    </Button>
+                                  )}
                                 </ButtonGroup>
                               </td>
-                              
+
                             </tr>
                           </tbody>
                         </Table>

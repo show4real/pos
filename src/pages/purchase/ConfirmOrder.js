@@ -315,58 +315,73 @@ export class ConfirmOrder extends Component {
           toggle={() => !loading && !saving && toggle}
         >
           {loading && <SpinDiv text={"Saving..."} />}
-          <div className="modal-header" style={{ padding: "1rem" }}>
-            {stock.cancel == 1 ? (
-              <h3 className="modal-title" id="exampleModalLabel">
-                Cancel Order {stock.tracking_id}
-              </h3>
-            ) : (
-              ""
-            )}
-            {stock.return == 1 ? (
-              <h3 className="modal-title" id="exampleModalLabel">
-                Return Order {stock.tracking_id}
-              </h3>
-            ) : (
-              ""
-            )}
-            {stock.confirm == 1 ? (
-              <h3 className="modal-title" id="exampleModalLabel">
-                Confirm Order {stock.tracking_id}
-              </h3>
-            ) : (
-              ""
-            )}
+
+          {/* Modal Header */}
+          <div className="modal-header border-bottom" style={{ padding: "1.5rem" }}>
+            <div>
+              {stock.cancel == 1 && (
+                <h3 className="modal-title mb-0 text-danger" id="exampleModalLabel">
+                  <i className="fas fa-times-circle me-2"></i>
+                  Cancel Order {stock.tracking_id}
+                </h3>
+              )}
+              {stock.return == 1 && (
+                <h3 className="modal-title mb-0 text-warning" id="exampleModalLabel">
+                  <i className="fas fa-undo me-2"></i>
+                  Return Order {stock.tracking_id}
+                </h3>
+              )}
+              {stock.confirm == 1 && (
+                <h3 className="modal-title mb-0 text-success" id="exampleModalLabel">
+                  <i className="fas fa-check-circle me-2"></i>
+                  Confirm Order {stock.tracking_id}
+                </h3>
+              )}
+              {stock.move == 1 && (
+                <h3 className="modal-title mb-0 text-primary" id="exampleModalLabel">
+                  <i className="fas fa-arrows-alt me-2"></i>
+                  Move Order {stock.tracking_id}
+                </h3>
+              )}
+            </div>
             <button
               type="button"
               className="btn-close"
               aria-label="Close"
               onClick={toggle}
+              disabled={loading || saving}
             ></button>
           </div>
-          <Card border="light" className="shadow-sm mb-4">
-            <Card.Body className="pb-0">
-              <Row>
-                <Col md={12} className="mb-3">
-                  {stock.confirm == 1 ? (
+
+          {/* Modal Body */}
+          <div className="modal-body" style={{ padding: "1.5rem", minHeight: "200px" }}>
+            <Card border="light" className="shadow-sm">
+              <Card.Body>
+
+                {/* Confirm Order Section */}
+                {stock.confirm == 1 && (
+                  <div className="confirm-section">
+                    <div className="cost-price-display mb-4 p-3 bg-light rounded">
+                      <h5 className="text-muted mb-0">
+                        <i className="fas fa-tag me-2"></i>
+                        Cost Price: <span className="text-dark fw-bold">{this.formatC(stock.unit_price)}</span>
+                      </h5>
+                    </div>
+
                     <Row>
-                      <Col md={12} className="mb-3">
-                        <Form.Group>
-                          <Form.Label>Unit Selling Price</Form.Label>
-                        </Form.Group>
-                        <Form.Group id="lastName">
-                          <Form.Label>
-                            {" "}
-                            Cost Price {this.formatC(stock.unit_price)}
-                            <br />
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label className="fw-semibold mb-2">
+                            <i className="fas fa-dollar-sign me-2"></i>
+                            Unit Selling Price
                           </Form.Label>
                           <InputNumber
                             style={{
                               width: "100%",
-                              height: 40,
-                              paddingTop: 5,
-                              borderRadius: 5,
-                              fontSize: 18,
+                              height: "45px",
+                              borderRadius: "8px",
+                              fontSize: "16px",
+                              border: "2px solid #e9ecef"
                             }}
                             formatter={(value) =>
                               `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
@@ -377,137 +392,201 @@ export class ConfirmOrder extends Component {
                                 event.preventDefault();
                               }
                             }}
-                            placeholder="Unit Selling Price"
+                            placeholder="Enter unit selling price"
                             onChange={(e) => this.onChange(e, "selling_price")}
                           />
                         </Form.Group>
                       </Col>
-                      <Row>
-                        <Col md={12}>
-                          <Form.Group id="firstName">
-                            <Form.Label>
-                              Date Received {stock.tracking_id}
-                            </Form.Label>
 
-                            <ReactDatetime
-                              value={received_at}
-                              dateFormat={"MMM DD, YYYY"}
-                              closeOnSelect
-                              onChange={(e) => this.onChange(e, "received_at")}
-                              inputProps={{
-                                required: true,
-                                className: "form-control date-width",
-                              }}
-                              timeFormat={false}
-                            />
-                          </Form.Group>
-                        </Col>
-                      </Row>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label className="fw-semibold mb-2">
+                            <i className="fas fa-calendar-alt me-2"></i>
+                            Date Received
+                          </Form.Label>
+                          <ReactDatetime
+                            value={received_at}
+                            dateFormat={"MMM DD, YYYY"}
+                            closeOnSelect
+                            onChange={(e) => this.onChange(e, "received_at")}
+                            inputProps={{
+                              required: true,
+                              className: "form-control",
+                              style: {
+                                height: "45px",
+                                borderRadius: "8px",
+                                border: "2px solid #e9ecef",
+                                fontSize: "16px"
+                              },
+                              placeholder: "Select date received"
+                            }}
+                            timeFormat={false}
+                          />
+                        </Form.Group>
+                      </Col>
                     </Row>
-                  ) : (
-                    ""
-                  )}
-                  {stock.cancel == 1 ? (
-                    <div
-                      className="modal-body"
-                      style={{ border: "1px solid #eee" }}
-                    >
-                      <div style={{ display: "none" }}></div>
-                      Are you sure you want to reject this order? <br />
-                      <br />
-                    </div>
-                  ) : (
-                    ""
-                  )}
-                  {stock.return == 1 ? (
-                    <div
-                      className="modal-body"
-                      style={{ border: "1px solid #eee" }}
-                    >
-                      <div style={{ display: "none" }}></div>
-                      Are you sure you want to return this order? <br />
-                      <br />
-                      <Form.Group className="mb-2">
-                        <Form.Select
-                          value={quantity_returned}
-                          onChange={(e) => {
-                            this.onChange(e.target.value, "quantity_returned");
-                          }}
-                          style={{
-                            marginRight: 10,
-                            width: "40%",
-                          }}
-                        >
-                          <option value="">Select Quantity</option>
-                          {this.selectQuantity(stock.in_stock)}
-                        </Form.Select>
-                      </Form.Group>
-                    </div>
-                  ) : (
-                    ""
-                  )}
-                  {stock.move == 1 ? (
-                    <div
-                      className="modal-body"
-                      style={{ border: "1px solid #eee" }}
-                    >
-                      <div style={{ display: "none" }}></div>
-                      <h5>Move Order, Specify Quantity and Branch</h5> <br />
-                      <br />
-                      <Form.Group className="mb-2">
-                        <Form.Label>Branches</Form.Label>
-                        <AsyncPaginate
-                          onChange={this.handleBranchChange}
-                          loadOptions={this.loadOptions}
-                        />
-                      </Form.Group>
-                      <Form.Group className="mb-2">
-                        <Form.Label>Quantity</Form.Label>
-                        <Form.Select
-                          value={quantity_moved}
-                          onChange={(e) => {
-                            this.onChange(e.target.value, "quantity_moved");
-                          }}
-                        >
-                          <option value="">Select Quantity</option>
-                          {this.selectQuantity(stock.in_stock)}
-                        </Form.Select>
-                      </Form.Group>
-                    </div>
-                  ) : (
-                    ""
-                  )}
-                </Col>
-              </Row>
-              <Row style={{ marginTop: "10px" }}>
-                <Col md={12}>
-                  <div>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      style={{ marginTop: "10px", float: "right" }}
-                      disabled={saving}
-                      onClick={this.onConfirmOrder}
-                    >
-                      Save
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="transparent"
-                      data-dismiss="modal"
-                      type="button"
-                      disabled={saving}
-                      style={{ marginTop: "10px", float: "right" }}
-                      onClick={toggle}
-                    >
-                      {" "}
-                      Close
-                    </Button>
                   </div>
-                </Col>
-              </Row>
-            </Card.Body>
-          </Card>
+                )}
+
+                {/* Cancel Order Section */}
+                {stock.cancel == 1 && (
+                  <div className="cancel-section">
+                    <div className="alert alert-danger d-flex align-items-center" role="alert">
+                      <i className="fas fa-exclamation-triangle me-3 fs-4"></i>
+                      <div>
+                        <h6 className="alert-heading mb-1">Confirm Cancellation</h6>
+                        <p className="mb-0">Are you sure you want to reject this order? This action cannot be undone.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Return Order Section */}
+                {stock.return == 1 && (
+                  <div className="return-section">
+                    <div className="alert alert-warning d-flex align-items-center mb-3" role="alert">
+                      <i className="fas fa-info-circle me-3 fs-4"></i>
+                      <div>
+                        <h6 className="alert-heading mb-1">Return Order</h6>
+                        <p className="mb-0">Select the quantity you want to return from this order.</p>
+                      </div>
+                    </div>
+
+                    <Row>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label className="fw-semibold mb-2">
+                            <i className="fas fa-boxes me-2"></i>
+                            Quantity to Return
+                          </Form.Label>
+                          <Form.Select
+                            value={quantity_returned}
+                            onChange={(e) => {
+                              this.onChange(e.target.value, "quantity_returned");
+                            }}
+                            style={{
+                              height: "45px",
+                              borderRadius: "8px",
+                              border: "2px solid #e9ecef"
+                            }}
+                          >
+                            <option value="">Select quantity to return</option>
+                            {this.selectQuantity(stock.in_stock)}
+                          </Form.Select>
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                  </div>
+                )}
+
+                {/* Move Order Section */}
+                {stock.move == 1 && (
+                  <div className="move-section">
+                    <div className="alert alert-info d-flex align-items-center mb-3" role="alert">
+                      <i className="fas fa-info-circle me-3 fs-4"></i>
+                      <div>
+                        <h6 className="alert-heading mb-1">Move Order</h6>
+                        <p className="mb-0">Specify the destination branch and quantity to move.</p>
+                      </div>
+                    </div>
+
+                    <Row>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label className="fw-semibold mb-2">
+                            <i className="fas fa-building me-2"></i>
+                            Destination Branch
+                          </Form.Label>
+                          <AsyncPaginate
+                            onChange={this.handleBranchChange}
+                            loadOptions={this.loadOptions}
+                            placeholder="Select branch..."
+                            styles={{
+                              control: (base) => ({
+                                ...base,
+                                height: "45px",
+                                borderRadius: "8px",
+                                border: "2px solid #e9ecef"
+                              })
+                            }}
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label className="fw-semibold mb-2">
+                            <i className="fas fa-boxes me-2"></i>
+                            Quantity to Move
+                          </Form.Label>
+                          <Form.Select
+                            value={quantity_moved}
+                            onChange={(e) => {
+                              this.onChange(e.target.value, "quantity_moved");
+                            }}
+                            style={{
+                              height: "45px",
+                              borderRadius: "8px",
+                              border: "2px solid #e9ecef"
+                            }}
+                          >
+                            <option value="">Select quantity to move</option>
+                            {this.selectQuantity(stock.in_stock)}
+                          </Form.Select>
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                  </div>
+                )}
+
+              </Card.Body>
+            </Card>
+          </div>
+
+          {/* Modal Footer */}
+          <div className="modal-footer border-top" style={{ padding: "1.5rem", backgroundColor: "#f8f9fa" }}>
+            <div className="d-flex justify-content-end gap-2 w-100">
+              <Button
+                variant="outline-secondary"
+                size="lg"
+                disabled={saving || loading}
+                onClick={toggle}
+                style={{
+                  borderRadius: "8px",
+                  paddingLeft: "2rem",
+                  paddingRight: "2rem",
+                  fontWeight: "500"
+                }}
+              >
+                <i className="fas fa-times me-2"></i>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="lg"
+                disabled={saving || loading}
+                onClick={this.onConfirmOrder}
+                style={{
+                  borderRadius: "8px",
+                  paddingLeft: "2rem",
+                  paddingRight: "2rem",
+                  fontWeight: "500",
+                  boxShadow: "0 2px 4px rgba(0,123,255,0.3)"
+                }}
+              >
+                {saving ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-save me-2"></i>
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </Modal>
       </>
     );

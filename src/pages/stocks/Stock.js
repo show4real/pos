@@ -345,7 +345,7 @@ export class Stock extends Component {
        
 
         <Row>
-          <Col lg="7">
+          <Col md="7" style={{marginTop:20}}>
             <h3>Stock</h3>
 
           </Col>
@@ -369,7 +369,7 @@ export class Stock extends Component {
                         <tr>
                           <th className="border-0">Product</th>
                           <th className="border-0">Purchase ID</th>
-
+                          <th className="border-0">Barcode</th>
                           <th className="border-0">Instock</th>
                           <th className="border-0">Returned</th>
                           <th className="border-0">Sold</th>
@@ -384,7 +384,7 @@ export class Stock extends Component {
                           <tr>
                             <td>{stock.order.product_name}</td>
                             <td>{stock.tracking}</td>
-
+                            <td>{stock.barcode ?? 'N/A'}</td>
                             <td>{this.formatNumber(stock.in_stock)}</td>
                             <td>{this.formatNumber(stock.quantity_returned)}</td>
                             <td>{this.formatNumber(stock.quantity_sold)}</td>
@@ -402,33 +402,7 @@ export class Stock extends Component {
                         }
                       </tbody>
                     </Table>
-                    <Row>
-                      <h5 style={{ paddingTop: "15px" }}>variants</h5>
-                      <Table
-                        responsive
-                        className="table-centered table-nowrap rounded mb-0"
-                      >
-                        <thead className="thead-light">
-                          <tr>
-                            {attributes.map((attribute, key) => {
-                              return (
-                                <th className="border-0">{attribute.name}</th>
-                              );
-                            })}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {
-                            <tr>
-                              {console.log(stock.order.product_attributes)}
-                              {this.attributeCols(
-                                `${stock.order.product_attributes}`
-                              )}
-                            </tr>
-                          }
-                        </tbody>
-                      </Table>
-                    </Row>
+                   
 
                   </Card.Body>
                 </Col>

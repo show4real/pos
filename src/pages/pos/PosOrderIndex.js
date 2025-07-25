@@ -290,7 +290,7 @@ export class PosOrderIndex extends Component {
         sum +=
           cartItem[i].new_serials !== undefined
             ? cartItem[i].new_serials.length *
-              cartItem[i].order.unit_selling_price
+            cartItem[i].order.unit_selling_price
             : 0 * cartItem[i].order.unit_selling_price;
       }
       return this.formatCurrency(sum);
@@ -305,14 +305,12 @@ export class PosOrderIndex extends Component {
     }
   }
 
-  clearCart() {
-    this.setState({
-      cartItem: [],
-      cart_details: [],
-    });
-    this.getPurchaseOrders();
-    localStorage.removeItem("cartItem");
-  }
+
+
+  clearCart = () => {
+    this.setState({ cartItem: [], cart_details: [], }); // or whatever state you want to reset
+  };
+
 
   showToast = (msg) => {
     toast(<div style={{ padding: 20, color: "success" }}>{msg}</div>);
@@ -495,480 +493,644 @@ export class PosOrderIndex extends Component {
               </div>
             </Col>
           </Row>
-          <Row>
-            <Col lg="7">
-              <h6>Stocks({total})</h6>
+          <Row className="mb-4">
+            <Col lg="12">
+              <div className="d-flex align-items-center justify-content-between">
+                <div className="stock-header">
+                  <h4 className="mb-1 text-primary fw-bold">
+                    <i className="fas fa-cube me-2"></i>
+                    Stock Inventory
+                  </h4>
+                  <div className="stock-count d-flex align-items-center">
+                    <span className="badge bg-primary-subtle text-primary fs-6 px-3 py-2 rounded-pill">
+                      <i className="fas fa-boxes me-1"></i>
+                      {total} {total === 1 ? 'Item' : 'Items'} Available
+                    </span>
+                  </div>
+                </div>
+
+                {/* Optional: Add action buttons or filters */}
+                {/* <div className="stock-actions">
+                  <div className="btn-group" role="group" aria-label="Stock actions">
+                    <button type="button" className="btn btn-outline-primary btn-sm">
+                      <i className="fas fa-filter me-1"></i>
+                      Filter
+                    </button>
+                    <button type="button" className="btn btn-outline-success btn-sm">
+                      <i className="fas fa-plus me-1"></i>
+                      Add Stock
+                    </button>
+                  </div>
+                </div> */}
+              </div>
+
+              {/* Optional: Stock summary cards */}
+              <div className="stock-summary mt-3">
+                <Row className="g-2">
+                  <Col md={3}>
+                    <div className="stock-card bg-success-subtle border border-success-subtle rounded p-2">
+                      <div className="d-flex align-items-center">
+                        <div className="icon-wrapper bg-success text-white rounded-circle me-2"
+                          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <i className="fas fa-check-circle fa-sm"></i>
+                        </div>
+                        <div>
+                          <small className="text-muted d-block">In Stock</small>
+                          <span className="fw-bold text-success">{total}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Col>
+                  {/* <Col md={3}>
+                    <div className="stock-card bg-warning-subtle border border-warning-subtle rounded p-2">
+                      <div className="d-flex align-items-center">
+                        <div className="icon-wrapper bg-warning text-white rounded-circle me-2"
+                          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <i className="fas fa-exclamation-triangle fa-sm"></i>
+                        </div>
+                        <div>
+                          <small className="text-muted d-block">Low Stock</small>
+                          <span className="fw-bold text-warning">0</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Col>
+                  <Col md={3}>
+                    <div className="stock-card bg-danger-subtle border border-danger-subtle rounded p-2">
+                      <div className="d-flex align-items-center">
+                        <div className="icon-wrapper bg-danger text-white rounded-circle me-2"
+                          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <i className="fas fa-times-circle fa-sm"></i>
+                        </div>
+                        <div>
+                          <small className="text-muted d-block">Out of Stock</small>
+                          <span className="fw-bold text-danger">0</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Col>
+                  <Col md={3}>
+                    <div className="stock-card bg-info-subtle border border-info-subtle rounded p-2">
+                      <div className="d-flex align-items-center">
+                        <div className="icon-wrapper bg-info text-white rounded-circle me-2"
+                          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <i className="fas fa-chart-line fa-sm"></i>
+                        </div>
+                        <div>
+                          <small className="text-muted d-block">Total Value</small>
+                          <span className="fw-bold text-info">₦0</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Col> */}
+                </Row>
+              </div>
             </Col>
           </Row>
-          <Row></Row>
 
           <Card border="light" className="shadow-sm mb-4">
-            <Row>
+            <Row className="align-items-center mb-3">
+              {/* Search Input Section */}
               <Col md={8}>
                 <Row>
-                  <Col md="5" className="">
-                    <div style={{ display: "flex" }}>
+                  <Col md={5}>
+                    <InputGroup style={{ marginBottom: '10px' }}>
                       <Input
                         placeholder="Search..."
                         id="show"
-                        style={{
-                          maxHeight: 45,
-                          marginRight: 5,
-                          marginBottom: 10,
-                        }}
                         value={search}
                         onChange={this.handleSearch}
                         autoFocus
+                        style={{
+                          height: '45px',
+                          borderTopLeftRadius: '5px',
+                          borderBottomLeftRadius: '5px',
+                        }}
                       />
-                    </div>
+                      {search && (
+                        <Button
+                          variant="outline-secondary"
+                          onClick={() => this.setState({ search: "" }, () => {
+                            if (this.state.search < 5) {
+                              this.searchThrottled(this.state.search);
+                            } else {
+                              this.searchDebounced(this.state.search);
+                            }
+                          })}
+                          style={{
+                            height: '45px',
+                            borderTopRightRadius: '5px',
+                            borderBottomRightRadius: '5px',
+                          }}
+                        >
+                          &times;
+                        </Button>
+                      )}
+                    </InputGroup>
                   </Col>
+
                 </Row>
               </Col>
-              <Col md={4} style={{ color: "primary", paddingTop: "15px" }}>
-                <div className="btn-toolbar mb-2 mb-md-0">
+
+              {/* Button Group Section */}
+              <Col md={4} className="text-end pt-2">
+                <div className="btn-toolbar justify-content-end">
                   <ButtonGroup>
                     {cartItem !== null ? (
-                      <div>
+                      <>
                         <Button variant="outline-success" size="sm">
-                          Cart({cartItem.length})
+                          Cart ({cartItem.length})
                         </Button>
                         <Button
                           variant="outline-primary"
                           size="sm"
-                          onClick={() => {
-                            this.clearCart();
-                          }}
+                          onClick={this.clearCart}
                         >
                           Clear Cart
                         </Button>
-                      </div>
+                      </>
                     ) : (
                       <Button
                         variant="outline-success"
-                        onClick={() => {
-                          this.props.history.push("/pos_sales");
-                        }}
                         size="sm"
+                        onClick={() => this.props.history.push("/pos_sales")}
                       >
                         View Sales
                       </Button>
                     )}
-                    {cart_details.length > 0 ? (
+
+                    {cart_details.length > 0 && (
                       <ReactToPrint
-                        trigger={() => {
-                          return (
-                            <Button
-                              variant="outline-success"
-                              href="#"
-                              size="sm"
-                            >
-                              Print Invoice
-                            </Button>
-                          );
-                        }}
+                        trigger={() => (
+                          <Button variant="outline-success" size="sm">
+                            Print Invoice
+                          </Button>
+                        )}
                         content={() => this.componentRef}
                       />
-                    ) : (
-                      ""
                     )}
                   </ButtonGroup>
                 </div>
               </Col>
             </Row>
-            <Row>
-              <Col md={6}>
-                <Card.Body className="pb-0">
-                  <div style={{ maxHeight: "500px", overflowY: "auto" }}>
-                    <Table
-                      responsive
-                      className="table-centered table-nowrap rounded mb-0"
-                    >
-                      <thead className="thead-light">
-                        <tr>
-                          <th className="border-0">Description</th>
 
-                          <th className="border-0">Price</th>
-                          <th className="border-0">Action</th>
-                          {/* <th className="border-0">Stock Order ID</th> */}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {stocks
-                          .filter((stock) => stock.in_stock > 0)
-                          .map((stock, key) => {
-                            const alreadyAdded = this.inCart(stock.id);
+            <Row className="g-4">
+              {/* Left Column - Product Inventory */}
+              <Col md={7}>
+                <Card className="h-100 shadow-sm border-0">
+                  <Card.Header className="bg-primary text-white py-3">
+                    <h5 className="mb-0">
+                      <i className="fas fa-boxes me-2"></i>
+                      Available Products
+                    </h5>
+                  </Card.Header>
+                  <Card.Body className="p-0">
+                    <div style={{ maxHeight: "500px", overflowY: "auto" }} className="custom-scrollbar">
+                      <Table responsive className="table-hover mb-0">
+                        <thead className="table-light sticky-top">
+                          <tr>
+                            <th className="border-0 fw-semibold" style={{ padding: "1rem" }}>Product Details</th>
+                            <th className="border-0 fw-semibold" style={{ padding: "1rem" }}>Price</th>
+                            <th className="border-0 fw-semibold" style={{ padding: "1rem", width: "100px" }}>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {stocks
+                            .filter((stock) => stock.in_stock > 0)
+                            .map((stock, key) => {
+                              const alreadyAdded = this.inCart(stock.id);
 
-                            return (
-                              <tr key={key}>
-                                <td>
-                                  <span style={{ fontWeight: "bold" }}>
-                                    {stock.product_name + " "}
-                                  </span>
-                                  <div>
-                                    <span style={{ fontSize: 15, padding: 10 }}>
-                                      {" "}
-                                      Code: {stock.tracking}{" "}
-                                    </span>
-                                    <span style={{ fontSize: 15, padding: 10 }}>
-                                      {" "}
-                                      In Stock: {stock.in_stock}
-                                      <br />
-                                    </span>
-                                    <span style={{ fontSize: 15, padding: 10 }}>
-                                      Total Stock: {stock.stock_quantity}{" "}
-                                    </span>
-                                  </div>
-                                </td>
-
-                                <td>
-                                  <span style={{ fontWeight: "bold" }}>
-                                    {" "}
-                                    {this.formatCurrency(
-                                      stock.order.fixed_price
-                                    )}{" "}
-                                  </span>
-                                </td>
-
-                                <td>
-                                  {stock.in_stock <= 0 ? (
-                                    <Button disabled color="primary" size="sm">
-                                      Out of Stock
-                                    </Button>
-                                  ) : alreadyAdded === false ? (
-                                    <Button
-                                      variant="outline-primary"
-                                      size="sm"
-                                      onClick={() =>
-                                        this.toggleAddToCart(stock)
-                                      }
-                                    >
-                                      <FontAwesomeIcon icon={faPlus} />
-                                    </Button>
-                                  ) : (
-                                    <Button color="primary" size="sm" disabled>
-                                      <FontAwesomeIcon icon={faCheck} />
-                                    </Button>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </Table>
-                  </div>
-                  <Row>
-                    <Col md={12} style={{ fontWeight: "bold", paddingTop: 30 }}>
-                      {stocks.filter((stock) => stock.in_stock > 0).length >
-                      0 ? (
-                        <Pagination
-                          showSizeChanger
-                          defaultCurrent={6}
-                          total={total}
-                          showTotal={(total) => `Total ${total} Stocks`}
-                          onChange={this.onPage}
-                          pageSize={rows}
-                          current={page}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            color: "#ccc",
-                            alignSelf: "center",
-                            padding: 10,
-                            fontSize: 13,
-                          }}
-                        >
-                          <i className="fa fa-ban" style={{ marginRight: 5 }} />
-                          No Stock found
-                        </div>
-                      )}
-                    </Col>
-                  </Row>
-                </Card.Body>
-              </Col>
-              <Col md={6}>
-                <Card.Body className="pb-0">
-                  <div className="modal-header" style={{ padding: "1rem" }}>
-                    <div className="btn-toolbar mb-2 mb-md-0">
-                      <ButtonGroup>
-                        {cartItem.length > 0 ? (
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            style={{ fontSize: 22, fontWeight: "bold" }}
-                          >
-                            Total: {this.totalCartP()}
-                          </Button>
-                        ) : (
-                          ""
-                        )}
-                      </ButtonGroup>
-                    </div>
-                  </div>
-
-                  {cart_details.length == 0 ? (
-                    <>
-                      <div style={{ maxHeight: "200px", overflowY: "auto" }}>
-                        <Table responsive className="table-nowrap rounded mb-0">
-                          <thead className="thead-light">
-                            <tr>
-                              <th className="border-0">Product</th>
-                              <th className="border-0">Price</th>
-
-                              <th className="border-0">Amount</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {cartItem.map((sale, key) => {
-                              const alreadyAdded = this.inCart(sale.id);
                               return (
-                                <tr>
-                                  <td>
-                                    <Media className="align-items-center">
-                                      <span
-                                        className="mb-0 text-sm"
-                                        style={{
-                                          fontWeight: "bold",
-                                          fontSize: 15,
-                                          paddingLeft: 5,
-                                        }}
-                                      >
-                                        {sale.product_name +
-                                          ` X ${sale.quantity}`}
-                                        <br />
-                                      </span>
-                                      <Button
-                                        size="xs"
-                                        style={{
-                                          marginLeft: "60px",
-                                          backgroundColor: "white",
-                                          color: "red",
-                                          borderColor: "red",
-                                          marginLeft: 10,
-                                        }}
-                                        onClick={() => this.removeFromCart(key)}
-                                      >
-                                        <i className="fa fa-trash" />
-                                      </Button>
-                                      &nbsp; &nbsp; &nbsp; &nbsp;
-                                      <Button
-                                        size="sm"
-                                        variant="outline-primary"
-                                        onClick={() =>
-                                          this.decrementCount(sale, key)
-                                        }
-                                      >
-                                        -
-                                      </Button>
-                                      <span style={{ padding: "10px" }}>
-                                        {sale.quantity}
-                                      </span>
-                                      <Button
-                                        size="sm"
-                                        variant="outline-primary"
-                                        onClick={() =>
-                                          this.incrementCount(sale, key)
-                                        }
-                                      >
-                                        +
-                                      </Button>
-                                    </Media>
+                                <tr key={key} className="border-bottom">
+                                  <td style={{ padding: "1.2rem" }}>
+                                    <div className="product-info">
+                                      <h6 className="mb-2 text-dark fw-bold">
+                                        {stock.product_name}
+                                      </h6>
+                                      <div className="product-meta" style={{ fontSize: 20 }}>
+                                        <span className="badge bg-secondary me-2">
+                                          <i className="fas fa-barcode me-1"></i>
+                                          {stock.tracking}
+                                        </span>
+                                        <span className="badge bg-secondary me-2">
+                                          <i className="fas fa-barcode me-1"></i>
+                                          Barcode {stock.barcode}
+                                        </span>
+                                        <span className="badge bg-success me-2">
+                                          <i className="fas fa-cube me-1"></i>
+                                          Stock: {stock.in_stock}
+                                        </span>
+                                        <span className="badge bg-info">
+                                          <i className="fas fa-warehouse me-1"></i>
+                                          Total: {stock.stock_quantity}
+                                        </span>
+                                      </div>
+                                    </div>
                                   </td>
 
-                                  <td>
-                                    <input
-                                      style={{
-                                        width: 100,
-                                        height: 40,
-                                        paddingTop: 5,
-                                        borderRadius: 5,
-                                        fontSize: 18,
-                                      }}
-                                      onKeyPress={(event) => {
-                                        if (!/[0-9]/.test(event.key)) {
-                                          event.preventDefault();
-                                        }
-                                      }}
-                                      parser={(value) =>
-                                        value.replace(/\$\s?|(,*)/g, "")
-                                      }
-                                      value={sale.order.unit_selling_price}
-                                      onChange={(event) =>
-                                        this.handlePriceChange(event, key)
-                                      }
-                                    />
+                                  <td style={{ padding: "1.2rem" }}>
+                                    <span className="h6 text-success fw-bold">
+                                      {this.formatCurrency(stock.order.fixed_price)}
+                                    </span>
                                   </td>
 
-                                  <td>
-                                    {sale.quantity *
-                                      sale.order.unit_selling_price}
+                                  <td style={{ padding: "1.2rem" }}>
+                                    {stock.in_stock <= 0 ? (
+                                      <Button
+                                        disabled
+                                        variant="outline-secondary"
+                                        size="sm"
+                                        className="rounded-pill"
+                                      >
+                                        <i className="fas fa-times me-1"></i>
+                                        Out of Stock
+                                      </Button>
+                                    ) : alreadyAdded === false ? (
+                                      <Button
+                                        variant="outline-primary"
+                                        size="sm"
+                                        onClick={() => this.toggleAddToCart(stock)}
+                                        className="rounded-pill px-3"
+                                        title="Add to cart"
+                                      >
+                                        <FontAwesomeIcon icon={faPlus} />
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        variant="success"
+                                        size="sm"
+                                        disabled
+                                        className="rounded-pill px-3"
+                                        title="Already in cart"
+                                      >
+                                        <FontAwesomeIcon icon={faCheck} />
+                                      </Button>
+                                    )}
                                   </td>
                                 </tr>
                               );
                             })}
-                          </tbody>
-                        </Table>
-                      </div>
-                      <div>
-                        <Table style={{ border: "none" }}>
-                          <tr>
-                            <Row
-                              style={{
-                                border: "1px #eee solid",
-                                padding: "10px 5px 0px",
-                                margin: "20px 15px",
-                                borderRadius: 7,
-                              }}
-                            >
-                              <Col md={4}>
-                                <Form.Label>Clients</Form.Label>
-                                <Select
-                                  showSearch
-                                  labelInValue
-                                  placeholder="Search Clients"
-                                  filterOption={false}
-                                  onSearch={this.handleSearchClient}
-                                  onPopupScroll={this.handlePopupScroll}
-                                  onChange={this.handleClientChange}
-                                  notFoundContent={
-                                    loading ? <Spin size="small" /> : null
-                                  }
-                                  style={{ width: "100%" }}
-                                >
-                                  {clients.map((client) => (
-                                    <Option key={client.id} value={client.id}>
-                                      {client.name}
-                                    </Option>
-                                  ))}
-                                </Select>
-                              </Col>
-                              <Col md={4}>
-                                <div>
-                                  <Form.Label>New Clients</Form.Label>
-                                </div>
-                                <ButtonGroup>
-                                  <Button
-                                    variant="outline-primary"
-                                    size="sm"
-                                    onClick={() => this.toggleAddClient()}
-                                  >
-                                    + New Client
-                                  </Button>
-                                </ButtonGroup>
-                              </Col>
-                              <Col md={4}>
-                                <Form.Group>
-                                  <Form.Label>Mode of payment</Form.Label>
+                        </tbody>
+                      </Table>
+                    </div>
 
-                                  <Form.Select
-                                    required
-                                    name="payment_mode"
-                                    value={payment_mode}
-                                    onChange={(e) =>
-                                      this.onChange(
-                                        e.target.value,
-                                        "payment_mode"
-                                      )
-                                    }
-                                    style={{
-                                      marginRight: 10,
-                                      width: "100%",
-                                    }}
-                                  >
-                                    <option value="">
-                                      Select payment mode
-                                    </option>
-                                    <option value="cash">Cash</option>
-                                    <option value="card">Card</option>
-                                    <option value="transfer">Transfer</option>
-                                  </Form.Select>
-                                </Form.Group>
-                              </Col>
-                            </Row>
-                          </tr>
-                          <tr>
-                            {cartItem.length > 0 && (
-                              <Row
-                                style={{
-                                  border: "1px #eee solid",
-                                  padding: "10px 5px 0px",
-                                  margin: "10px 15px",
-                                  borderRadius: 7,
-                                }}
-                              >
-                                <Col md={4}>
-                                  <Form.Group className="mb-2">
-                                    <Form.Label>Amount Received</Form.Label>
-                                    <InputGroup>
-                                      <InputNumber
+                    {/* Pagination Section */}
+                    <div className="p-3 border-top bg-light">
+                      {stocks.filter((stock) => stock.in_stock > 0).length > 0 ? (
+                        <Pagination
+                          showSizeChanger
+                          defaultCurrent={6}
+                          total={total}
+                          showTotal={(total) => `Total ${total} products`}
+                          onChange={this.onPage}
+                          pageSize={rows}
+                          current={page}
+                          className="mb-0"
+                        />
+                      ) : (
+                        <div className="text-center text-muted py-4">
+                          <i className="fas fa-inbox fa-2x mb-3 d-block"></i>
+                          <h6 className="text-muted">No products in stock</h6>
+                          <small>Please restock your inventory</small>
+                        </div>
+                      )}
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+
+              {/* Right Column - Shopping Cart & Checkout */}
+              <Col md={5}>
+                <Card className="h-100 shadow-sm border-0">
+                  <Card.Header className="bg-success text-white py-3">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <h5 className="mb-0">
+                        <i className="fas fa-shopping-cart me-2"></i>
+                        Shopping Cart
+                      </h5>
+                      {cartItem.length > 0 && (
+                        <div className="cart-total">
+                          <span className="badge bg-light text-dark fs-6 px-3 py-2">
+                            Total: {this.totalCartP()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </Card.Header>
+
+                  <Card.Body className="p-0">
+                    {cart_details.length === 0 ? (
+                      <>
+                        {/* Cart Items */}
+                        <div style={{ maxHeight: "300px", overflowY: "auto" }} className="custom-scrollbar">
+                          {cartItem.length === 0 ? (
+                            <div className="text-center text-muted py-5">
+                              <i className="fas fa-shopping-cart fa-3x mb-3 text-muted"></i>
+                              <h6 className="text-muted">Your cart is empty</h6>
+                              <small>Add products from the inventory to get started</small>
+                            </div>
+                          ) : (
+                            <Table responsive className="table-hover mb-0">
+                              <thead className="table-light sticky-top">
+                                <tr>
+                                  <th className="border-0 fw-semibold" style={{ padding: "1rem" }}>Product</th>
+                                  <th className="border-0 fw-semibold" style={{ padding: "1rem", width: "120px" }}>Price</th>
+                                  <th className="border-0 fw-semibold" style={{ padding: "1rem", width: "100px" }}>Amount</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {cartItem.map((sale, key) => (
+                                  <tr key={key} className="border-bottom">
+                                    <td style={{ padding: "1rem" }}>
+                                      <div className="cart-item-details">
+                                        <h6 className="mb-2 fw-bold">
+                                          {sale.product_name}
+                                        </h6>
+
+                                        {/* Quantity Controls */}
+                                        <div className="quantity-controls d-flex align-items-center gap-2 mb-2">
+                                          <Button
+                                            size="sm"
+                                            variant="outline-danger"
+                                            onClick={() => this.removeFromCart(key)}
+                                            className="rounded-circle p-1"
+                                            style={{ width: "30px", height: "30px" }}
+                                            title="Remove item"
+                                          >
+                                            <i className="fas fa-trash fa-sm"></i>
+                                          </Button>
+
+                                          <div className="quantity-adjuster d-flex align-items-center">
+                                            <Button
+                                              size="sm"
+                                              variant="outline-primary"
+                                              onClick={() => this.decrementCount(sale, key)}
+                                              className="rounded-circle p-1"
+                                              style={{ width: "30px", height: "30px" }}
+                                            >
+                                              <i className="fas fa-minus fa-sm"></i>
+                                            </Button>
+                                            <span className="mx-3 fw-bold fs-6">
+                                              {sale.quantity}
+                                            </span>
+                                            <Button
+                                              size="sm"
+                                              variant="outline-primary"
+                                              onClick={() => this.incrementCount(sale, key)}
+                                              className="rounded-circle p-1"
+                                              style={{ width: "30px", height: "30px" }}
+                                            >
+                                              <i className="fas fa-plus fa-sm"></i>
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </td>
+
+                                    <td style={{ padding: "1rem" }}>
+                                      <input
+                                        type="number"
+                                        className="form-control form-control-sm"
                                         style={{
-                                          width: "auto",
-                                          height: 40,
-                                          paddingTop: 5,
-                                          borderRadius: 5,
-                                          fontSize: 18,
+                                          width: "100px",
+                                          height: "40px",
+                                          borderRadius: "8px",
+                                          fontSize: "14px"
                                         }}
-                                        formatter={(value) =>
-                                          `${value}`.replace(
-                                            /\B(?=(\d{3})+(?!\d))/g,
-                                            ","
-                                          )
-                                        }
-                                        parser={(value) =>
-                                          value.replace(/\$\s?|(,*)/g, "")
-                                        }
                                         onKeyPress={(event) => {
                                           if (!/[0-9]/.test(event.key)) {
                                             event.preventDefault();
                                           }
                                         }}
-                                        onChange={(e) =>
-                                          this.onChange(e, "amount_paid")
-                                        }
+                                        value={sale.order.unit_selling_price}
+                                        onChange={(event) => this.handlePriceChange(event, key)}
                                       />
-                                    </InputGroup>
+                                    </td>
+
+                                    <td style={{ padding: "1rem" }}>
+                                      <span className="fw-bold text-success">
+                                        {this.formatCurrency(sale.quantity * sale.order.unit_selling_price)}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </Table>
+                          )}
+                        </div>
+
+                        {/* Checkout Section */}
+                        {cartItem.length > 0 && (
+                          <div className="checkout-section border-top bg-light">
+                            {/* Customer & Payment Info */}
+                            <div className="p-3 border-bottom">
+                              <h6 className="mb-3 fw-semibold text-muted">
+                                <i className="fas fa-user-circle me-2"></i>
+                                Customer & Payment Details
+                              </h6>
+                              <Row className="g-3">
+                                <Col md={4}>
+                                  <Form.Group>
+                                    <Form.Label className="fw-semibold mb-2">Customer</Form.Label>
+                                    <Select
+                                      showSearch
+                                      labelInValue
+                                      placeholder="Search customers..."
+                                      filterOption={false}
+                                      onSearch={this.handleSearchClient}
+                                      onPopupScroll={this.handlePopupScroll}
+                                      onChange={this.handleClientChange}
+                                      notFoundContent={loading ? <Spin size="small" /> : null}
+                                      style={{ width: "100%" }}
+                                      className="custom-select"
+                                    >
+                                      {clients.map((client) => (
+                                        <Option key={client.id} value={client.id}>
+                                          {client.name}
+                                        </Option>
+                                      ))}
+                                    </Select>
                                   </Form.Group>
                                 </Col>
-                                <Col md={2}></Col>
+
                                 <Col md={4}>
-                                  <div style={{ paddingTop: 30 }}>
-                                    {cartItem.length > 0 ? (
-                                      <div>
-                                        <Button
-                                          variant="outline-primary"
-                                          type="submit"
-                                          disabled={saving}
-                                          onClick={this.onSaveSales}
-                                        >
-                                          Checkout
-                                        </Button>
-                                      </div>
-                                    ) : (
-                                      ""
-                                    )}
-                                  </div>
+                                  <Form.Group>
+                                    <Form.Label className="fw-semibold mb-2">New Customer</Form.Label>
+                                    <Button
+                                      variant="outline-success"
+                                      size="sm"
+                                      onClick={() => this.toggleAddClient()}
+                                      className="w-100"
+                                      style={{ height: "32px" }}
+                                    >
+                                      <i className="fas fa-user-plus me-2"></i>
+                                      Add New Customer
+                                    </Button>
+                                  </Form.Group>
+                                </Col>
+
+                                <Col md={4}>
+                                  <Form.Group>
+                                    <Form.Label className="fw-semibold mb-2">Payment Method</Form.Label>
+                                    <Form.Select
+                                      required
+                                      name="payment_mode"
+                                      value={payment_mode}
+                                      onChange={(e) => this.onChange(e.target.value, "payment_mode")}
+                                      style={{ height: "32px", fontSize: "14px" }}
+                                      className="form-select-sm"
+                                    >
+                                      <option value="">Select payment method</option>
+                                      <option value="cash">💵 Cash</option>
+                                      <option value="card">💳 Card</option>
+                                      <option value="transfer">🏦 Bank Transfer</option>
+                                    </Form.Select>
+                                  </Form.Group>
                                 </Col>
                               </Row>
-                            )}
-                          </tr>
-                        </Table>
+                            </div>
+
+                            {/* Payment Amount & Checkout */}
+                            <div className="p-3">
+                              <Row className="align-items-end">
+                                <Col md={6}>
+                                  <Form.Group>
+                                    <Form.Label className="fw-semibold mb-2">
+                                      <i className="fas fa-money-bill-wave me-2"></i>
+                                      Amount Received
+                                    </Form.Label>
+                                    <InputNumber
+                                      style={{
+                                        width: "100%",
+                                        height: "45px",
+                                        borderRadius: "8px",
+                                        fontSize: "16px"
+                                      }}
+                                      formatter={(value) =>
+                                        `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                                      }
+                                      parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+                                      onKeyPress={(event) => {
+                                        if (!/[0-9]/.test(event.key)) {
+                                          event.preventDefault();
+                                        }
+                                      }}
+                                      onChange={(e) => this.onChange(e, "amount_paid")}
+                                      placeholder="Enter amount received"
+                                    />
+                                  </Form.Group>
+                                </Col>
+
+                                <Col md={6}>
+                                  <Button
+                                    variant="success"
+                                    size="lg"
+                                    disabled={saving}
+                                    onClick={this.onSaveSales}
+                                    className="w-100"
+                                    style={{
+                                      height: "45px",
+                                      borderRadius: "8px",
+                                      fontWeight: "600",
+                                      boxShadow: "0 2px 4px rgba(40,167,69,0.3)"
+                                    }}
+                                  >
+                                    {saving ? (
+                                      <>
+                                        <span className="spinner-border spinner-border-sm me-2"></span>
+                                        Processing...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <i className="fas fa-cash-register me-2"></i>
+                                        Complete Sale
+                                      </>
+                                    )}
+                                  </Button>
+                                </Col>
+                              </Row>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      /* Sale Completed Message */
+                      <div className="text-center py-5">
+                        <div className="success-animation mb-4">
+                          <i className="fas fa-check-circle fa-4x text-success"></i>
+                        </div>
+                        <h4 className="text-success mb-3">Sale Completed Successfully!</h4>
+                        <p className="text-muted mb-4">
+                          The transaction has been processed. You can now print the invoice using the button above.
+                        </p>
+                        <div className="alert alert-success d-inline-block">
+                          <i className="fas fa-print me-2"></i>
+                          Ready to print invoice
+                        </div>
                       </div>
-                    </>
-                  ) : (
-                    <Row>
-                      <Col md={2}></Col>
-                      <Col md={8}>
-                        <h5>
-                          Sales has been completed, Print Invoice by clicking on
-                          the Button above
-                        </h5>
-                      </Col>
-                      <Col md={2}></Col>
-                    </Row>
-                  )}
-                </Card.Body>
+                    )}
+                  </Card.Body>
+                </Card>
               </Col>
             </Row>
+
+            <style jsx>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                  width: 6px;
+                }
+                
+                .custom-scrollbar::-webkit-scrollbar-track {
+                  background: #f1f1f1;
+                  border-radius: 3px;
+                }
+                
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                  background: #c1c1c1;
+                  border-radius: 3px;
+                }
+                
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                  background: #a8a8a8;
+                }
+                
+                .product-meta .badge {
+                  font-size: 0.75em;
+                }
+                
+                .cart-total .badge {
+                  font-size: 1rem !important;
+                }
+                
+                .quantity-controls {
+                  flex-wrap: wrap;
+                }
+                
+                .success-animation {
+                  animation: bounceIn 0.6s ease-out;
+                }
+                
+                @keyframes bounceIn {
+                  0% {
+                    opacity: 0;
+                    transform: scale(0.3);
+                  }
+                  50% {
+                    opacity: 1;
+                    transform: scale(1.05);
+                  }
+                  70% {
+                    transform: scale(0.9);
+                  }
+                  100% {
+                    opacity: 1;
+                    transform: scale(1);
+                  }
+                }
+                
+                .table-hover tbody tr:hover {
+                  background-color: rgba(0,123,255,0.05);
+                }
+              `}</style>
             <Row></Row>
           </Card>
         </div>

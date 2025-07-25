@@ -54,6 +54,20 @@ export function getPosTransactions(data) {
   }
 }
 
+export function getPosTransactions2(data) {
+  const requestOptions = {
+    method: "POST",
+    headers: authHeader(),
+    body: JSON.stringify(data),
+  };
+  if (authuser && authuser.admin === 1) {
+    return fetch(`${settings.API_URL}pos_transactions`, requestOptions).then(
+      authService.handleResponse
+    );
+    //return fetch(`${settings.API_URL}invoice/${id}`, requestOptions).then(authService.handleResponse);
+  }
+}
+
 export function getTransactionDetails(data) {
   const requestOptions = {
     method: "POST",

@@ -162,7 +162,7 @@ export class AddOrder extends Component {
     data.set("unit_price", unit_price);
     data.set("product_id", product_id);
     data.set("stock_quantity", stock_quantity);
-    data.set("supplier", supplier);
+    //data.set("supplier", supplier);
     return axios
       .post(
         `${settings.API_URL}purchase_order`,
@@ -210,62 +210,87 @@ export class AddOrder extends Component {
           className="modal-dialog modal-dialog-centered"
           isOpen={addStock != null}
           toggle={() => !loading && !saving && toggle}
-          style={{ maxWidth: 700 }}
+          style={{ maxWidth: 750 }}
         >
-          {loading && <SpinDiv text={"Loading..."} />}
-          <div className="modal-header" style={{ padding: "1rem" }}>
-            <div className="btn-toolbar mb-2 mb-md-0">
-              <h5>Create Order</h5>
+          {/* Loading Overlay */}
+          {loading && (
+            <div className="position-absolute w-100 h-100 d-flex align-items-center justify-content-center bg-white bg-opacity-75 rounded" style={{ zIndex: 10 }}>
+              <SpinDiv text={"Loading..."} />
             </div>
+          )}
 
+          {/* Modal Header */}
+          <div className="modal-header border-0 pb-2" style={{ padding: "1.5rem 1.5rem 0.5rem" }}>
+            <div className="d-flex align-items-center">
+              <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style={{ width: 40, height: 40 }}>
+                <i className="fas fa-shopping-cart text-white"></i>
+              </div>
+              <div>
+                <h5 className="mb-0 fw-bold text-dark">Create Purchase Order</h5>
+                <small className="text-muted">Add new inventory items</small>
+              </div>
+            </div>
             <button
               type="button"
               className="btn-close"
               aria-label="Close"
               onClick={toggle}
+              disabled={loading || saving}
+              style={{ fontSize: '0.875rem' }}
             ></button>
           </div>
-          <Card border="light" className="shadow-sm mb-4">
-            <Card.Body className="pb-0">
-              <Row>
-                <Col md={12} className="mb-3">
-                  <Row>
-                    <Col md={8}>
-                      <Form.Group className="mb-2">
-                        <Form.Label>Select Product</Form.Label>
-                        <Select
-                          showSearch
-                          placeholder="Search products"
-                          filterOption={false}
-                          onSearch={this.handleSearch}
-                          onPopupScroll={this.handlePopupScroll}
-                          onChange={this.onChange2}
-                          notFoundContent={
-                            loading ? <Spin size="small" /> : null
-                          }
-                          style={{ width: "100%" }}
-                        >
-                          {products.map((product) => (
-                            <Option key={product.id} value={product.id}>
-                              {product.name}
-                            </Option>
-                          ))}
-                        </Select>
-                      </Form.Group>
-                    </Col>
-                  </Row>
+
+          {/* Modal Body */}
+          <Card border="0" className="shadow-none">
+            <Card.Body style={{ padding: "0 1.5rem 1.5rem" }}>
+              <Row className="g-4">
+                {/* Product Selection */}
+                <Col md={12}>
+                  <Form.Group>
+                    <Form.Label className="fw-semibold text-dark mb-2 small">
+                      <i className="fas fa-search text-primary me-2"></i>
+                      Select Product
+                    </Form.Label>
+                    <Select
+                      showSearch
+                      placeholder="Search and select a product..."
+                      filterOption={false}
+                      onSearch={this.handleSearch}
+                      onPopupScroll={this.handlePopupScroll}
+                      onChange={this.onChange2}
+                      notFoundContent={loading ? <Spin size="small" /> : null}
+                      style={{
+                        width: "100%",
+                        borderRadius: '8px'
+                      }}
+                      className="custom-select"
+                    >
+                      {products.map((product) => (
+                        <Option key={product.id} value={product.id}>
+                          <div className="d-flex align-items-center">
+                            <span className="fw-medium">{product.name}</span>
+                          </div>
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Group>
                 </Col>
-                <Col md={6} className="mb-3">
-                  <Form.Group id="lastName">
-                    <Form.Label>Purchase Order Unit</Form.Label>
+
+                {/* Quantity and Price Row */}
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label className="fw-semibold text-dark mb-2 small">
+                      <i className="fas fa-boxes text-success me-2"></i>
+                      Purchase Order Units
+                    </Form.Label>
                     <InputNumber
                       style={{
                         width: "100%",
-                        height: 40,
-                        paddingTop: 5,
-                        borderRadius: 5,
-                        fontSize: 18,
+                        height: 48,
+                        borderRadius: 8,
+                        fontSize: 16,
                       }}
+                      className="custom-input-number"
                       formatter={(value) =>
                         `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
                       }
@@ -275,72 +300,118 @@ export class AddOrder extends Component {
                           event.preventDefault();
                         }
                       }}
-                      placeholder="Enter Purchase Order Unit"
+                      placeholder="Enter quantity"
                       onChange={(e) => this.onChange(e, "stock_quantity")}
+                      min={1}
                     />
                   </Form.Group>
                 </Col>
-                <Col md={6} className="mb-3">
-                  <Form.Group id="lastName">
-                    <Form.Label>Unit Price</Form.Label>
-                    <div>
-                      <InputNumber
-                        style={{
-                          width: "100%",
-                          height: 40,
-                          paddingTop: 5,
-                          borderRadius: 5,
-                          fontSize: 18,
-                        }}
-                        formatter={(value) =>
-                          `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                        }
-                        parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
-                        onKeyPress={(event) => {
-                          if (!/[0-9]/.test(event.key)) {
-                            event.preventDefault();
-                          }
-                        }}
-                        placeholder="Enter Unit Cost"
-                        onChange={(e) => this.onChange(e, "unit_price")}
-                      />
-                    </div>
-                  </Form.Group>
-                </Col>
-                {/* <Col md={6} className="mb-3">
-                  <Form.Group className="mb-2">
-                    <Form.Label>Select Supplier</Form.Label>
-                    <AsyncPaginate
-                      onChange={this.handleSupplierChange}
-                      loadOptions={this.loadSuppliers(suppliers)}
-                      additional={{
-                        page: 1,
-                      }}
-                    />
-                    
-                  </Form.Group>
-                </Col> */}
 
-                <div className="mt-3" style={{ marginBottom: 15 }}>
-                  <div>
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label className="fw-semibold text-dark mb-2 small">
+                      <i className="fas fa-dollar-sign text-warning me-2"></i>
+                      Unit Price
+                    </Form.Label>
+                    <InputNumber
+                      style={{
+                        width: "100%",
+                        height: 48,
+                        borderRadius: 8,
+                        fontSize: 16,
+                      }}
+                      className="custom-input-number"
+                      formatter={(value) =>
+                        `₦ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                      }
+                      parser={(value) => value.replace(/₦\s?|(,*)/g, "")}
+                      onKeyPress={(event) => {
+                        if (!/[0-9.]/.test(event.key)) {
+                          event.preventDefault();
+                        }
+                      }}
+                      placeholder="Enter unit price"
+                      onChange={(e) => this.onChange(e, "unit_price")}
+                      min={0}
+                      step={0.01}
+                    />
+                  </Form.Group>
+                </Col>
+
+                {/* Total Summary Card */}
+                <Col md={12}>
+                  <div className="bg-light rounded-3 p-3 border">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <span className="text-muted small">Estimated Total:</span>
+                      <span className="fw-bold text-primary h6 mb-0">
+                        ₦ {((this.state?.stock_quantity || 0) * (this.state?.unit_price || 0)).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </Col>
+
+                {/* Action Button */}
+                <Col md={12}>
+                  <div className="d-grid gap-2 mt-2 pb-3">
                     <Button
                       variant="primary"
-                      type="submit"
+                      size="lg"
                       disabled={saving}
                       onClick={this.onSaveStock}
+                      className="py-3 fw-semibold rounded-3"
+                      style={{
+                        background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)',
+                        border: 'none',
+                        boxShadow: '0 4px 15px rgba(0, 123, 255, 0.3)',
+                        height:45,
+                        paddingBottom:10
+                      }}
                     >
                       {saving ? (
-                        <Spin tip="Saving..." />
+                        <div className="d-flex align-items-center justify-content-center">
+                          <Spin size="small" className="me-2" />
+                          <span>Saving Purchase Order...</span>
+                        </div>
                       ) : (
-                        <span> Save Purchase order</span>
+                        <div className="d-flex align-items-center justify-content-center">
+                          <i className="fas fa-save me-2"></i>
+                          <span>Save Purchase Order</span>
+                        </div>
                       )}
                     </Button>
                   </div>
-                </div>
+                </Col>
               </Row>
             </Card.Body>
           </Card>
         </Modal>
+
+        <style jsx>{`
+  .custom-select .ant-select-selector {
+    border-radius: 8px !important;
+    border: 1px solid #dee2e6 !important;
+    height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+  
+  .custom-select .ant-select-selection-placeholder {
+    color: #6c757d !important;
+  }
+  
+  .custom-input-number .ant-input-number {
+    border: 1px solid #dee2e6 !important;
+  }
+  
+  .custom-input-number .ant-input-number:hover {
+    border-color: #007bff !important;
+  }
+  
+  .custom-input-number .ant-input-number:focus {
+    border-color: #007bff !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+  }
+`}</style>
       </>
     );
   }

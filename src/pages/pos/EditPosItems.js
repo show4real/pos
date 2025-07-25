@@ -435,495 +435,419 @@ export class PosOrderIndex extends Component {
           />
         )}
 
-        <div style={{ margin: 10 }}>
-          <Row>
+        <div className="p-3">
+          {/* Header with Breadcrumb */}
+          <Row className="mb-4">
             <Col lg="12">
-              <div className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
+              <div className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4 border-bottom">
                 <div className="d-block mb-4 mb-md-0">
-                  <Breadcrumb
-                    listProps={{
-                      className: " breadcrumb-text-dark text-primary",
-                    }}
-                  >
-                    <Breadcrumb.Item href="/">Home</Breadcrumb.Item>
-                    <Breadcrumb.Item href="/invoices">Invoices</Breadcrumb.Item>
-                    <Breadcrumb.Item href="/pos">New POS</Breadcrumb.Item>
+                  <Breadcrumb listProps={{ className: "breadcrumb-text-dark text-primary mb-0" }}>
+                    <Breadcrumb.Item href="/" className="text-muted">Home</Breadcrumb.Item>
+                    <Breadcrumb.Item href="/invoices" className="text-muted">Invoices</Breadcrumb.Item>
+                    <Breadcrumb.Item href="/pos" className="text-primary fw-semibold">New POS</Breadcrumb.Item>
                   </Breadcrumb>
                 </div>
               </div>
             </Col>
           </Row>
-          <Row>
+
+          {/* Stock Count Header */}
+          <Row className="mb-3">
             <Col lg="7">
-              <h6>Stocks({total})</h6>
+              <div className="d-flex align-items-center">
+                <h4 className="mb-0 me-3">Available Stocks</h4>
+                <span className="badge bg-primary rounded-pill fs-6">({total})</span>
+              </div>
             </Col>
           </Row>
-          <Row></Row>
 
-          <Card border="light" className="shadow-sm mb-4">
-            <Row>
-              <Col md={8}>
-                <Row>
-                  <Col md="5" className="">
-                    <div style={{ display: "flex" }}>
-                      <Input
-                        placeholder="Search..."
-                        id="show"
-                        style={{
-                          maxHeight: 45,
-                          marginRight: 5,
-                          marginBottom: 10,
-                        }}
-                        value={search}
-                        onChange={this.handleSearch}
-                        autoFocus
-                      />
-                    </div>
-                  </Col>
-                </Row>
-              </Col>
-              <Col md={4} style={{ color: "primary", paddingTop: "15px" }}>
-                <div className="btn-toolbar mb-2 mb-md-0">
-                  <ButtonGroup>
-                    {cartItem !== null && (
-                      <div>
-                        <Button variant="outline-success" size="sm">
-                          Cart({cartItem.length})
-                        </Button>
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          onClick={() => {
-                            this.clearCart();
-                          }}
-                        >
-                          Clear Cart
+          {/* Main POS Interface Card */}
+          <Card className="border-0 shadow-sm mb-4">
+            <Card.Body className="p-4">
+              {/* Top Controls Row */}
+              <Row className="mb-4 align-items-center">
+                <Col md={8}>
+                  <Row>
+                    <Col md="6">
+                      <div className="input-group">
+                        <Input
+                          placeholder="Search products..."
+                          className="form-control"
+                          value={search}
+                          onChange={this.handleSearch}
+                          autoFocus
+                        />
+                        <Button variant="secondary" className="btn-icon">
+                          <i className="fa fa-search" />
                         </Button>
                       </div>
-                    )}
-                    {sales.length > 0 ? (
-                      <ReactToPrint
-                        trigger={() => {
-                          return (
-                            <Button
-                              variant="outline-success"
-                              href="#"
-                              size="sm"
-                            >
-                              Print Invoice
-                            </Button>
-                          );
-                        }}
-                        content={() => this.componentRef}
-                      />
-                    ) : (
-                      ""
-                    )}
-                  </ButtonGroup>
-                </div>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={6}>
-                <Card.Body className="pb-0">
-                  <div style={{ maxHeight: "500px", overflowY: "auto" }}>
-                    <Table
-                      responsive
-                      className="table-centered table-nowrap rounded mb-0"
-                    >
-                      <thead className="thead-light">
-                        <tr>
-                          <th className="border-0">Description</th>
-
-                          <th className="border-0">Price</th>
-                          <th className="border-0">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {stocks
-                          .filter((stock) => stock.in_stock > 0)
-                          .map((stock, key) => {
-                            const alreadyAdded = this.inCart(stock.id);
-
-                            return (
-                              <tr key={key}>
-                                <td>
-                                  <span style={{ fontWeight: "bold" }}>
-                                    {stock.product_name + " "}
-                                  </span>
-                                  <div>
-                                    <span style={{ fontSize: 15, padding: 10 }}>
-                                      {" "}
-                                      Code: {stock.tracking}{" "}
-                                    </span>
-                                    <span style={{ fontSize: 15, padding: 10 }}>
-                                      {" "}
-                                      In Stock: {stock.in_stock}
-                                      <br />
-                                    </span>
-                                    <span style={{ fontSize: 15, padding: 10 }}>
-                                      Total Stock: {stock.stock_quantity}{" "}
-                                    </span>
-                                  </div>
-                                </td>
-
-                                <td>
-                                  <span style={{ fontWeight: "bold" }}>
-                                    {" "}
-                                    {this.formatCurrency(
-                                      stock.order.fixed_price
-                                    )}{" "}
-                                  </span>
-                                </td>
-
-                                <td>
-                                  {stock.in_stock <= 0 ? (
-                                    <Button disabled color="primary" size="sm">
-                                      Out of Stock
-                                    </Button>
-                                  ) : alreadyAdded === false ? (
-                                    <Button
-                                      variant="outline-primary"
-                                      size="sm"
-                                      onClick={() =>
-                                        this.toggleAddToCart(stock)
-                                      }
-                                    >
-                                      <FontAwesomeIcon icon={faPlus} />
-                                    </Button>
-                                  ) : (
-                                    <Button color="primary" size="sm" disabled>
-                                      <FontAwesomeIcon icon={faCheck} />
-                                    </Button>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </Table>
-                  </div>
-                  <Row>
-                    <Col md={12} style={{ fontWeight: "bold", paddingTop: 30 }}>
-                      {stocks.filter((stock) => stock.in_stock > 0).length >
-                      0 ? (
-                        <Pagination
-                          showSizeChanger
-                          defaultCurrent={6}
-                          total={total}
-                          showTotal={(total) => `Total ${total} Stocks`}
-                          onChange={this.onPage}
-                          pageSize={rows}
-                          current={page}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            color: "#ccc",
-                            alignSelf: "center",
-                            padding: 10,
-                            fontSize: 13,
-                          }}
-                        >
-                          <i className="fa fa-ban" style={{ marginRight: 5 }} />
-                          No Stock found
-                        </div>
-                      )}
                     </Col>
                   </Row>
-                </Card.Body>
-              </Col>
-              <Col md={6}>
-                <Card.Body className="pb-0">
-                  <div className="modal-header" style={{ padding: "1rem" }}>
-                    <div className="btn-toolbar mb-2 mb-md-0">
-                      <ButtonGroup>
-                        {cartItem.length > 0 ? (
+                </Col>
+                <Col md={4}>
+                  <div className="d-flex justify-content-end gap-2 flex-wrap">
+                    {cartItem !== null && cartItem.length > 0 && (
+                      <>
+                        <Button variant="outline-success" size="sm" className="d-flex align-items-center gap-2">
+                          <i className="fa fa-shopping-cart" />
+                          Cart ({cartItem.length})
+                        </Button>
+                        <Button
+                          variant="outline-warning"
+                          size="sm"
+                          onClick={() => this.clearCart()}
+                          className="d-flex align-items-center gap-2"
+                        >
+                          <i className="fa fa-trash" />
+                          Clear Cart
+                        </Button>
+                      </>
+                    )}
+                    {sales.length > 0 && (
+                      <ReactToPrint
+                        trigger={() => (
                           <Button
-                            variant="outline-primary"
+                            variant="outline-success"
                             size="sm"
-                            style={{ fontSize: 22, fontWeight: "bold" }}
+                            className="d-flex align-items-center gap-2"
                           >
-                            Total: {this.totalCartP()}
+                            <i className="fa fa-print" />
+                            Print Invoice
                           </Button>
-                        ) : (
-                          ""
                         )}
-                      </ButtonGroup>
-                    </div>
+                        content={() => this.componentRef}
+                      />
+                    )}
                   </div>
+                </Col>
+              </Row>
 
-                  {sales.length == 0 ? (
-                    <>
-                      <div style={{ maxHeight: "200px", overflowY: "auto" }}>
-                        <Table responsive className="table-nowrap rounded mb-0">
-                          <thead className="thead-light">
+              {/* Two-Column Layout */}
+              <Row>
+                {/* Left Column - Product List */}
+                <Col md={6}>
+                  <Card className="h-100 border">
+                    <Card.Header className="bg-primary text-white">
+                      <h6 className="mb-0 fw-semibold">Available Products</h6>
+                    </Card.Header>
+                    <Card.Body className="p-0">
+                      <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+                        <Table className="table-hover mb-0">
+                          <thead className="bg-light sticky-top">
                             <tr>
-                              <th className="border-0">Product</th>
-                              <th className="border-0">Price</th>
-
-                              <th className="border-0">Amount</th>
+                              <th className="border-0 py-3 px-4 fw-semibold">Product Details</th>
+                              <th className="border-0 py-3 px-4 fw-semibold">Price</th>
+                              <th className="border-0 py-3 px-4 fw-semibold">Action</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {cartItem.map((sale, key) => {
-                              const alreadyAdded = this.inCart(sale.id);
-                              return (
-                                <tr>
-                                  <td>
-                                    <Media className="align-items-center">
-                                      <span
-                                        className="mb-0 text-sm"
-                                        style={{
-                                          fontWeight: "bold",
-                                          fontSize: 15,
-                                          paddingLeft: 5,
-                                        }}
-                                      >
-                                        {sale.product_name +
-                                          ` X ${sale.quantity}`}
-                                        <br />
+                            {stocks
+                              .filter((stock) => stock.in_stock > 0)
+                              .map((stock, key) => {
+                                const alreadyAdded = this.inCart(stock.id);
+                                return (
+                                  <tr key={key} className="border-bottom">
+                                    <td className="py-3 px-4">
+                                      <div>
+                                        <div className="fw-bold text-dark mb-2">{stock.product_name}</div>
+                                        <div className="small text-muted">
+                                          <div className="mb-1">
+                                            <span className="fw-semibold">Code:</span> {stock.tracking}
+                                          </div>
+                                          <div className="mb-1">
+                                            <span className="fw-semibold text-success">In Stock:</span>
+                                            <span className="fw-bold text-success ms-1">{stock.in_stock}</span>
+                                          </div>
+                                          <div>
+                                            <span className="fw-semibold text-info">Total Stock:</span>
+                                            <span className="fw-bold text-info ms-1">{stock.stock_quantity}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="py-3 px-4">
+                                      <span className="fw-bold fs-6 text-success">
+                                        {this.formatCurrency(stock.order.fixed_price)}
                                       </span>
-                                      <Button
-                                        size="xs"
-                                        style={{
-                                          marginLeft: "60px",
-                                          backgroundColor: "white",
-                                          color: "red",
-                                          borderColor: "red",
-                                          marginLeft: 10,
-                                        }}
-                                        onClick={() => this.removeFromCart(key)}
-                                      >
-                                        <i className="fa fa-trash" />
-                                      </Button>
-                                      &nbsp; &nbsp; &nbsp; &nbsp;
-                                      <Button
-                                        size="sm"
-                                        variant="outline-primary"
-                                        onClick={() =>
-                                          this.decrementCount(sale, key)
-                                        }
-                                      >
-                                        -
-                                      </Button>
-                                      <span style={{ padding: "10px" }}>
-                                        {sale.quantity}
-                                      </span>
-                                      <Button
-                                        size="sm"
-                                        variant="outline-primary"
-                                        onClick={() =>
-                                          this.incrementCount(sale, key)
-                                        }
-                                      >
-                                        +
-                                      </Button>
-                                    </Media>
-                                  </td>
-
-                                  <td>
-                                    <input
-                                      style={{
-                                        width: 100,
-                                        height: 40,
-                                        paddingTop: 5,
-                                        borderRadius: 5,
-                                        fontSize: 18,
-                                      }}
-                                      onKeyPress={(event) => {
-                                        if (!/[0-9]/.test(event.key)) {
-                                          event.preventDefault();
-                                        }
-                                      }}
-                                      parser={(value) =>
-                                        value.replace(/\$\s?|(,*)/g, "")
-                                      }
-                                      value={sale.order.unit_selling_price}
-                                      onChange={(event) =>
-                                        this.handlePriceChange(event, key)
-                                      }
-                                    />
-                                  </td>
-
-                                  <td>
-                                    {sale.quantity *
-                                      sale.order.unit_selling_price}
-                                  </td>
-                                </tr>
-                              );
-                            })}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                      {stock.in_stock <= 0 ? (
+                                        <Button disabled variant="secondary" size="sm" className="d-flex align-items-center gap-2">
+                                          <i className="fa fa-ban" />
+                                          Out of Stock
+                                        </Button>
+                                      ) : alreadyAdded === false ? (
+                                        <Button
+                                          variant="outline-primary"
+                                          size="sm"
+                                          onClick={() => this.toggleAddToCart(stock)}
+                                          className="d-flex align-items-center gap-2"
+                                        >
+                                          <FontAwesomeIcon icon={faPlus} />
+                                          Add
+                                        </Button>
+                                      ) : (
+                                        <Button variant="success" size="sm" disabled className="d-flex align-items-center gap-2">
+                                          <FontAwesomeIcon icon={faCheck} />
+                                          Added
+                                        </Button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                           </tbody>
                         </Table>
                       </div>
-                      <div>
-                        <Table style={{ border: "none" }}>
-                          <tr>
-                            <Row
-                              style={{
-                                border: "1px #eee solid",
-                                padding: "10px 5px 0px",
-                                margin: "20px 15px",
-                                borderRadius: 7,
-                              }}
-                            >
-                              <Col md={4}>
-                                <Form.Label>Clients</Form.Label>
-                                <div>
-                                  <Form.Group className="mb-2">
-                                    <Select
-                                      showSearch
-                                      labelInValue
-                                      placeholder="Search Clients"
-                                      filterOption={false}
-                                      onSearch={this.handleSearchClient}
-                                      onPopupScroll={this.handlePopupScroll}
-                                      onChange={this.handleClientChange}
-                                      notFoundContent={
-                                        loading ? <Spin size="small" /> : null
-                                      }
-                                      style={{ width: "100%" }}
-                                      value={selectedClient}
-                                    >
-                                      {clients.map((client) => (
-                                        <Option
-                                          key={client.id}
-                                          value={client.id}
-                                          label={client.name}
-                                        >
-                                          {client.name}
-                                        </Option>
-                                      ))}
-                                    </Select>
-                                  </Form.Group>
-                                </div>
-                              </Col>
-                              <Col md={4} style={{ paddingTop: 40 }}>
-                                <ButtonGroup>
-                                  <Button
-                                    variant="outline-primary"
-                                    size="sm"
-                                    onClick={() => this.toggleAddClient()}
-                                  >
-                                    + New Client
-                                  </Button>
-                                </ButtonGroup>
-                              </Col>
-                              <Col md={4}>
-                                <Form.Group>
-                                  <Form.Label>Mode of payment</Form.Label>
 
-                                  <Form.Select
-                                    required
-                                    name="payment_mode"
-                                    value={payment_mode}
-                                    onChange={(e) =>
-                                      this.onChange(
-                                        e.target.value,
-                                        "payment_mode"
-                                      )
-                                    }
-                                    style={{
-                                      marginRight: 10,
-                                      width: "100%",
-                                    }}
-                                  >
-                                    <option value="">
-                                      Select payment mode
-                                    </option>
-                                    <option value="cash">Cash</option>
-                                    <option value="card">Card</option>
-                                    <option value="transfer">Transfer</option>
-                                  </Form.Select>
-                                </Form.Group>
-                              </Col>
-                            </Row>
-                          </tr>
-                          <tr>
-                            {cartItem.length > 0 && (
-                              <Row
-                                style={{
-                                  border: "1px #eee solid",
-                                  padding: "10px 5px 0px",
-                                  margin: "10px 15px",
-                                  borderRadius: 7,
-                                }}
-                              >
-                                <Col md={4}>
-                                  <Form.Group className="mb-2">
-                                    <Form.Label>Amount Received</Form.Label>
-                                    <InputGroup>
-                                      <InputNumber
-                                        style={{
-                                          width: "auto",
-                                          height: 40,
-                                          paddingTop: 5,
-                                          borderRadius: 5,
-                                          fontSize: 18,
-                                        }}
-                                        formatter={(value) =>
-                                          `${value}`.replace(
-                                            /\B(?=(\d{3})+(?!\d))/g,
-                                            ","
-                                          )
-                                        }
-                                        parser={(value) =>
-                                          value.replace(/\$\s?|(,*)/g, "")
-                                        }
+                      {/* Pagination Footer */}
+                      <div className="px-4 py-3 bg-light border-top">
+                        {stocks.filter((stock) => stock.in_stock > 0).length > 0 ? (
+                          <Pagination
+                            showSizeChanger
+                            defaultCurrent={6}
+                            total={total}
+                            showTotal={(total) => `Total ${total} products available`}
+                            onChange={this.onPage}
+                            pageSize={rows}
+                            current={page}
+                          />
+                        ) : (
+                          <div className="text-center py-3">
+                            <div className="text-muted">
+                              <i className="fa fa-inbox fa-2x mb-3 d-block" />
+                              <h6 className="mb-2">No Products Available</h6>
+                              <p className="mb-0 small">No products found in stock</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+
+                {/* Right Column - Cart & Checkout */}
+                <Col md={6}>
+                  <Card className="h-100 border">
+                    <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center">
+                      <h6 className="mb-0 fw-semibold">Shopping Cart</h6>
+                      {cartItem.length > 0 && (
+                        <div className="fs-5 fw-bold">
+                          Total: {this.totalCartP()}
+                        </div>
+                      )}
+                    </Card.Header>
+                    <Card.Body className="p-0">
+                      {sales.length === 0 ? (
+                        <>
+                          {/* Cart Items */}
+                          <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+                            <Table className="table-hover mb-0">
+                              <thead className="bg-light sticky-top">
+                                <tr>
+                                  <th className="border-0 py-2 px-3 fw-semibold">Product</th>
+                                  <th className="border-0 py-2 px-3 fw-semibold">Price</th>
+                                  <th className="border-0 py-2 px-3 fw-semibold">Amount</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {cartItem.map((sale, key) => (
+                                  <tr key={key} className="border-bottom">
+                                    <td className="py-3 px-3">
+                                      <div>
+                                        <div className="fw-bold text-dark mb-2">
+                                          {sale.product_name} × {sale.quantity}
+                                        </div>
+                                        <div className="d-flex align-items-center gap-2">
+                                          <Button
+                                            size="sm"
+                                            variant="outline-danger"
+                                            onClick={() => this.removeFromCart(key)}
+                                            title="Remove from cart"
+                                          >
+                                            <i className="fa fa-trash" />
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline-secondary"
+                                            onClick={() => this.decrementCount(sale, key)}
+                                          >
+                                            -
+                                          </Button>
+                                          <span className="fw-bold px-2">{sale.quantity}</span>
+                                          <Button
+                                            size="sm"
+                                            variant="outline-secondary"
+                                            onClick={() => this.incrementCount(sale, key)}
+                                          >
+                                            +
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="py-3 px-3">
+                                      <input
+                                        type="text"
+                                        className="form-control form-control-sm"
+                                        style={{ width: "80px", fontSize: "14px" }}
                                         onKeyPress={(event) => {
                                           if (!/[0-9]/.test(event.key)) {
                                             event.preventDefault();
                                           }
                                         }}
-                                        value={amount_paid}
-                                        onChange={(e) =>
-                                          this.onChange(e, "amount_paid")
-                                        }
+                                        value={sale.order.unit_selling_price}
+                                        onChange={(event) => this.handlePriceChange(event, key)}
                                       />
-                                    </InputGroup>
-                                  </Form.Group>
-                                </Col>
-                                <Col md={2}></Col>
-                                <Col md={4}>
-                                  <div style={{ paddingTop: 30 }}>
-                                    {cartItem.length > 0 ? (
-                                      <div>
+                                    </td>
+                                    <td className="py-3 px-3">
+                                      <span className="fw-bold text-success">
+                                        {this.formatCurrency(sale.quantity * sale.order.unit_selling_price)}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </Table>
+                          </div>
+
+                          {/* Checkout Form */}
+                          <div className="p-4 bg-light">
+                            {/* Client Selection */}
+                            <Card className="border mb-3">
+                              <Card.Body>
+                                <Row>
+                                  <Col md={6} className="mb-3">
+                                    <Form.Group>
+                                      <Form.Label className="fw-semibold">Select Client</Form.Label>
+                                      <Select
+                                        showSearch
+                                        labelInValue
+                                        placeholder="Search clients..."
+                                        filterOption={false}
+                                        onSearch={this.handleSearchClient}
+                                        onPopupScroll={this.handlePopupScroll}
+                                        onChange={this.handleClientChange}
+                                        notFoundContent={loading ? <Spin size="small" /> : null}
+                                        style={{ width: "100%" }}
+                                        value={selectedClient}
+                                      >
+                                        {clients.map((client) => (
+                                          <Option key={client.id} value={client.id} label={client.name}>
+                                            {client.name}
+                                          </Option>
+                                        ))}
+                                      </Select>
+                                    </Form.Group>
+                                  </Col>
+                                  <Col md={6} className="mb-3 d-flex align-items-end">
+                                    <Button
+                                      variant="outline-primary"
+                                      size="sm"
+                                      onClick={() => this.toggleAddClient()}
+                                      className="d-flex align-items-center gap-2"
+                                    >
+                                      <i className="fa fa-plus" />
+                                      New Client
+                                    </Button>
+                                  </Col>
+                                </Row>
+
+                                <Row>
+                                  <Col md={12}>
+                                    <Form.Group>
+                                      <Form.Label className="fw-semibold">Payment Method</Form.Label>
+                                      <Form.Select
+                                        required
+                                        name="payment_mode"
+                                        value={payment_mode}
+                                        onChange={(e) => this.onChange(e.target.value, "payment_mode")}
+                                        className="form-select"
+                                      >
+                                        <option value="">Select payment method</option>
+                                        <option value="cash">💰 Cash</option>
+                                        <option value="card">💳 Card</option>
+                                        <option value="transfer">🏦 Bank Transfer</option>
+                                      </Form.Select>
+                                    </Form.Group>
+                                  </Col>
+                                </Row>
+                              </Card.Body>
+                            </Card>
+
+                            {/* Payment & Checkout */}
+                            {cartItem.length > 0 && (
+                              <Card className="border">
+                                <Card.Body>
+                                  <Row className="align-items-end">
+                                    <Col md={6} className="mb-3">
+                                      <Form.Group>
+                                        <Form.Label className="fw-semibold">Amount Received</Form.Label>
+                                        <InputNumber
+                                          style={{
+                                            width: "100%",
+                                            height: 40,
+                                            fontSize: 16,
+                                          }}
+                                          formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                                          parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+                                          onKeyPress={(event) => {
+                                            if (!/[0-9]/.test(event.key)) {
+                                              event.preventDefault();
+                                            }
+                                          }}
+                                          value={amount_paid}
+                                          onChange={(e) => this.onChange(e, "amount_paid")}
+                                          placeholder="Enter amount received"
+                                        />
+                                      </Form.Group>
+                                    </Col>
+                                    <Col md={6} className="mb-3">
+                                      <div className="d-grid">
                                         <Button
-                                          variant="outline-primary"
+                                          variant="success"
+                                          size="lg"
                                           type="submit"
-                                          disabled={saving}
+                                          disabled={saving || cartItem.length === 0}
                                           onClick={this.onSaveSales}
+                                          className="d-flex align-items-center justify-content-center gap-2"
                                         >
-                                          Checkout
+                                          {saving ? (
+                                            <>
+                                              <i className="fa fa-spinner fa-spin" />
+                                              Processing...
+                                            </>
+                                          ) : (
+                                            <>
+                                              <i className="fa fa-check" />
+                                              Checkout
+                                            </>
+                                          )}
                                         </Button>
                                       </div>
-                                    ) : (
-                                      ""
-                                    )}
-                                  </div>
-                                </Col>
-                              </Row>
+                                    </Col>
+                                  </Row>
+                                </Card.Body>
+                              </Card>
                             )}
-                          </tr>
-                        </Table>
-                      </div>
-                    </>
-                  ) : (
-                    <Row>
-                      <Col md={2}></Col>
-                      <Col md={8}>
-                        <h5>
-                          Sales has been completed, Print Invoice by clicking on
-                          the Button above
-                        </h5>
-                      </Col>
-                      <Col md={2}></Col>
-                    </Row>
-                  )}
-                </Card.Body>
-              </Col>
-            </Row>
-            <Row></Row>
+                          </div>
+                        </>
+                      ) : (
+                        /* Success Message */
+                        <div className="p-5 text-center">
+                          <div className="mb-4">
+                            <i className="fa fa-check-circle fa-4x text-success mb-3" />
+                            <h4 className="text-success fw-bold mb-3">Sale Completed Successfully!</h4>
+                            <p className="text-muted">
+                              Your transaction has been processed. You can print the invoice using the button above.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </Card.Body>
+                  </Card>
+                </Col>
+              </Row>
+            </Card.Body>
           </Card>
         </div>
       </>

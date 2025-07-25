@@ -32,5 +32,5 @@ export let routes = [
     { path: "/pos",component: PosOrderIndex, title:"POS",icon:faCalculator },
   
     { path: "/invoices", component: InvoiceIndex, title:"Invoices",icon:faFileInvoice },
-    { path: "/pos_transactions",component: PosTransaction, title:"Transactions",icon:faCalculator },
+    // { path: "/pos_transactions",component: PosTransaction, title:"Transactions",icon:faCalculator },
   ];

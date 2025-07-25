@@ -179,309 +179,271 @@ export class StockIndex extends Component {
       addToCart,
     } = this.state;
     return (
-      <>
-        {loading && <SpinDiv text={"Loading..."} />}
-        <Row style={{}}>
-          <Col lg="12">
-            <div className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
-              <div className="d-block mb-4 mb-md-0">
-                <Breadcrumb
-                  listProps={{
-                    className: " breadcrumb-text-dark text-primary",
-                  }}
+     <>
+  {loading && <SpinDiv text={"Loading..."} />}
+  
+  {/* Header with Breadcrumb */}
+  <Row className="mb-4">
+    <Col lg="12">
+      <div className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4 border-bottom">
+        <div className="d-block mb-4 mb-md-0">
+          <Breadcrumb listProps={{ className: "breadcrumb-text-dark text-primary mb-0" }}>
+            <Breadcrumb.Item href="/" className="text-muted">Home</Breadcrumb.Item>
+            <Breadcrumb.Item href="#stocks" className="text-primary fw-semibold">Stocks</Breadcrumb.Item>
+          </Breadcrumb>
+        </div>
+      </div>
+    </Col>
+  </Row>
+
+  {/* Controls Row */}
+  <Row className="mb-4 align-items-center">
+    <Col lg="7">
+      <div className="d-flex align-items-center">
+        <h4 className="mb-0 me-3">Stocks</h4>
+        <span className="badge bg-primary rounded-pill fs-6">({total})</span>
+      </div>
+    </Col>
+    
+    <Col lg="1">
+      {!showFilter && (
+        <Button
+          variant="outline-warning"
+          size="sm"
+          onClick={this.toggleFilter}
+          className="d-flex align-items-center gap-2"
+        >
+          <i className="fa fa-filter" />
+          Filter
+        </Button>
+      )}
+    </Col>
+    
+    <Col lg="4">
+      <div className="input-group">
+        <Input
+          placeholder="Search stocks..."
+          className="form-control"
+          value={search}
+          onChange={(e) => this.onChange(e.target.value, "search")}
+          autoFocus
+          onKeyUp={(e) => {
+            if (e.key === "Enter") {
+              this.getStocks();
+              this.setState({ search: "" });
+            }
+          }}
+        />
+        <Button
+          variant="secondary"
+          onClick={this.getStocks}
+          className="btn-icon d-flex align-items-center justify-content-center"
+        >
+          <i className="fa fa-search" />
+        </Button>
+      </div>
+    </Col>
+  </Row>
+
+  {/* Filter Row */}
+  {showFilter && (
+    <Row className="mb-4">
+      <Col md={12}>
+        <Card className="border-0 shadow-sm">
+          <Card.Body>
+            <Row className="align-items-end">
+              <Col md={4}>
+                <Form.Label className="form-label fw-semibold mb-2">Filter by Product</Form.Label>
+                <Form.Select
+                  value={order}
+                  onChange={(e) => this.onFilter(e.target.value, "order")}
+                  className="form-select"
                 >
-                  <Breadcrumb.Item href="/">Home</Breadcrumb.Item>
-                  <Breadcrumb.Item href="#stocks">Stocks</Breadcrumb.Item>
-                </Breadcrumb>
-              </div>
-              <div className="btn-toolbar mb-2 mb-md-0">
-                {/* <ButtonGroup>
-
-                  <Button variant="outline-primary" size="sm"
-                    onClick={() => { this.props.history.push('/products') }}
-
-                  >
-                    Products
-                  </Button>
-
-
-
-                </ButtonGroup> */}
-              </div>
-            </div>
-          </Col>
-        </Row>
-        <Row>
-          <div className="btn-toolbar mb-2 mb-md-0"></div>
-          <Col lg="7">
-            <h6>Stocks({total})</h6>
-          </Col>
-          <Col lg="1">
-            {!showFilter && (
-              <div style={{ display: "flex" }}>
+                  <option value="">All Products</option>
+                  {products.map((p, index) => (
+                    <option value={p.id} key={index}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
+              <Col md={4}>
                 <Button
-                  color="warning"
-                  onClick={this.toggleFilter}
+                  variant="outline-warning"
                   size="sm"
-                  style={{ marginRight: 10 }}
+                  onClick={this.toggleFilter}
+                  className="d-flex align-items-center gap-2"
                 >
-                  Filter
+                  <i className="fa fa-eye-slash" />
+                  Hide Filters
                 </Button>
-              </div>
-            )}
-          </Col>
-          <Col lg="4" className="">
-            <div style={{ display: "flex" }}>
-              <Input
-                placeholder="Search..."
-                id="show"
-                style={{ maxHeight: 45, marginRight: 5, marginBottom: 10 }}
-                value={search}
-                onChange={(e) => this.onChange(e.target.value, "search")}
-                autoFocus
-                onKeyUp={(e) => {
-                  if (e.key === "Enter") {
-                    this.getStocks();
-                    this.setState({
-                      search: "",
-                    });
-                  }
-                }}
-              />
-              <Button
-                className="btn-icon btn-2"
-                color="secondary"
-                style={{ maxHeight: 45 }}
-                size="sm"
-                onClick={this.getStocks}
-              >
-                <i className="fa fa-search" />
-              </Button>
-            </div>
-          </Col>
-        </Row>
-        <Row>
-          <Col md={12}>
-            {showFilter && (
-              <Row>
-                <Col md={4}>
-                  <Form.Select
-                    value={order}
-                    type="select"
-                    onChange={(e) => this.onFilter(e.target.value, "order")}
-                  >
-                    <option value="">Select Product</option>
-                    {products.map((p, index) => (
-                      <option value={p.id} key={p}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Col>
-                <Col md={4}>
-                  <Button
-                    color="warning"
-                    onClick={this.toggleFilter}
-                    size="sm"
-                    style={{ marginRight: 10 }}
-                  >
-                    Hide Filters
-                  </Button>
-                </Col>
-              </Row>
-            )}
-          </Col>
-        </Row>
-
-        <Card border="light" className="shadow-sm mb-4">
-          <Row>
-            {/* <Col lg="10">
-              <div style={{
-                fontSize: "18px", paddingTop: "20px", color: "red",
-                paddingLeft: "10px", fontWeight: "bold"
-              }}>
-                Total Stock Cost:&nbsp;&#8358;
-                {total_cost.map((total, key) => {
-                  return (total.total !== null ? total.total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                    : "----");
-                })}
-              </div>
-            </Col> */}
-            <Col lg="2" style={{ color: "primary", paddingTop: "15px" }}></Col>
-          </Row>
-          <Card.Body className="pb-0">
-            <Table
-              responsive
-              className="table-centered table-nowrap rounded mb-0"
-            >
-              <thead className="thead-light">
-                <tr>
-                  <th className="border-0">Product</th>
-                  <th className="border-0">Branch</th>
-                  <th className="border-0">Variant</th>
-                  {/* <th className="border-0">Stock Order ID</th>
-                  <th className="border-0">Quantity Sold</th> */}
-                  <th className="border-0">Supplier </th>
-                  <th className="border-0">Sold</th>
-                  <th className="border-0">Amount</th>
-                  <th className="border-0">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stocks.map((stock, key) => {
-                  return (
-                    <tr key={key}>
-                      <th scope="row">
-                        <td>
-                          <Media className="align-items-center">
-                            <a
-                              className="avatar rounded-circle mr-3"
-                              href="#p"
-                              onClick={(e) => e.preventDefault()}
-                            >
-                              {stock.product_image !== null && (
-                                <img
-                                  style={{
-                                    maxHeight: 50,
-                                    maxWidth: 50,
-                                    borderRadius: 5,
-                                  }}
-                                  alt="..."
-                                  src={stock.product_image}
-                                />
-                              )}
-                            </a>
-                            <span className="mb-0 text-sm">
-                              {stock.product_name}
-                            </span>
-                          </Media>
-                        </td>
-                      </th>
-                      <td>{stock.branch_name}</td>
-                      <td>
-                        <span
-                          className="mb-0 text-sm"
-                          style={{ display: "block" }}
-                        >
-                          {this.attributeCols(
-                            JSON.parse(stock.order.product_attributes),
-                            JSON.parse(stock.order.product_attributes_keys)
-                          )}
-                        </span>
-                        <br />
-
-                        <span
-                          className="mb-0 text-sm"
-                          style={{ display: "block" }}
-                        >
-                          <span style={{ fontWeight: "bold" }}>
-                            Selling Price:{" "}
-                          </span>
-                          {this.formatCurrency(stock.order.unit_selling_price)}
-                        </span>
-
-                        <span
-                          className="mb-0 text-sm"
-                          style={{ display: "block" }}
-                        >
-                          <span style={{ fontWeight: "bold" }}>
-                            Cost Price:{" "}
-                          </span>
-                          {this.formatCurrency(stock.order.unit_price)}
-                        </span>
-
-                        <span
-                          className="mb-0 text-sm"
-                          style={{ display: "block" }}
-                        >
-                          <span style={{ fontWeight: "bold" }}>
-                            Initial Stock:{" "}
-                          </span>
-                          {stock.stock_quantity}
-                        </span>
-                        <span
-                          className="mb-0 text-sm"
-                          style={{ display: "block" }}
-                        >
-                          <span style={{ fontWeight: "bold" }}>Sold: </span>
-                          {stock.quantity_sold}
-                        </span>
-                        <span
-                          className="mb-0 text-sm"
-                          style={{ display: "block" }}
-                        >
-                          <span style={{ fontWeight: "bold" }}>In Stock: </span>
-                          {stock.in_stock}
-                        </span>
-                        <span
-                          className="mb-0 text-sm"
-                          style={{ display: "block" }}
-                        >
-                          <span style={{ fontWeight: "bold" }}>
-                            Purchase ID:{" "}
-                          </span>
-                          {stock.order.tracking_id}
-                        </span>
-                      </td>
-                      <td>{stock.order.supplier_name}</td>
-                      <td>{stock.quantity_sold}</td>
-
-                      <td>
-                        {this.formatCurrency(
-                          stock.quantity_sold * stock.order.unit_selling_price
-                        )}
-                      </td>
-                      <td>
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          onClick={() => {
-                            //console.log('111')
-                            this.props.history.push(
-                              "/stock/" +
-                                stock.id +
-                                "/product/" +
-                                stock.order.product_id
-                            );
-                          }}
-                        >
-                          View
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </Table>
-            <Row>
-              <Col md={12} style={{ fontWeight: "bold", paddingTop: 3 }}>
-                {stocks.length < 1 && (
-                  <div
-                    style={{
-                      color: "#ccc",
-                      alignSelf: "center",
-                      padding: 10,
-                      fontSize: 13,
-                    }}
-                  >
-                    <i className="fa fa-ban" style={{ marginRight: 5 }} />
-                    No Stocks for the date Range
-                  </div>
-                )}
-                {stocks.length > 0 && (
-                  <Pagination
-                    total={total}
-                    showTotal={(total) => `Total ${total} Stocks`}
-                    onChange={this.onPage}
-                    pageSize={rows}
-                    current={page}
-                  />
-                )}
               </Col>
             </Row>
           </Card.Body>
         </Card>
-      </>
+      </Col>
+    </Row>
+  )}
+
+  {/* Main Table Card */}
+  <Card className="border-0 shadow-sm">
+    <Card.Body className="p-0">
+      <div className="table-responsive">
+        <Table className="table-hover mb-0">
+          <thead className="bg-light">
+            <tr>
+              <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
+                Product
+              </th>
+              <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
+                Branch
+              </th>
+              <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
+                Stock Details
+              </th>
+              <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
+                Supplier
+              </th>
+              <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
+                Sold
+              </th>
+              <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
+                Amount
+              </th>
+              <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
+                Action
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {stocks.map((stock, key) => (
+              <tr key={key} className="border-bottom">
+                <td className="py-4 px-4">
+                  <div className="d-flex align-items-center">
+                    <div className="me-3">
+                      {stock.product_image ? (
+                        <img
+                          src={stock.product_image}
+                          alt={stock.product_name}
+                          className="rounded"
+                          style={{ width: '50px', height: '50px', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <div 
+                          className="bg-light rounded d-flex align-items-center justify-content-center text-muted"
+                          style={{ width: '50px', height: '50px' }}
+                        >
+                          <i className="fa fa-image" />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="fw-semibold text-dark">{stock.product_name}</div>
+                    </div>
+                  </div>
+                </td>
+                
+                <td className="py-4 px-4">
+                  <span className="text-muted">{stock.branch_name}</span>
+                </td>
+                
+                <td className="py-4 px-4">
+                  <div className="small">
+                    <div className="mb-2">
+                      <span className="fw-semibold text-success">Selling Price: </span>
+                      <span className="text-dark">{this.formatCurrency(stock.order.unit_selling_price)}</span>
+                    </div>
+                    <div className="mb-2">
+                      <span className="fw-semibold text-warning">Cost Price: </span>
+                      <span className="text-dark">{this.formatCurrency(stock.order.unit_price)}</span>
+                    </div>
+                    <div className="mb-2">
+                      <span className="fw-semibold text-primary">Initial Stock: </span>
+                      <span className="text-dark">{stock.stock_quantity}</span>
+                    </div>
+                    <div className="mb-2">
+                      <span className="fw-semibold text-danger">Sold: </span>
+                      <span className="text-dark">{stock.quantity_sold}</span>
+                    </div>
+                    <div className="mb-2">
+                      <span className="fw-semibold text-info">In Stock: </span>
+                      <span className="text-dark">{stock.in_stock}</span>
+                    </div>
+                    <div>
+                      <span className="fw-semibold text-muted">Purchase ID: </span>
+                      <code className="text-primary">{stock.order.tracking_id}</code>
+                    </div>
+                  </div>
+                </td>
+                
+                <td className="py-4 px-4">
+                  <span className="text-muted">{stock.order.supplier_name}</span>
+                </td>
+                
+                <td className="py-4 px-4">
+                  <span className="badge bg-success rounded-pill fs-6">
+                    {stock.quantity_sold}
+                  </span>
+                </td>
+                
+                <td className="py-4 px-4">
+                  <span className="fw-semibold text-success fs-6">
+                    {this.formatCurrency(stock.quantity_sold * stock.order.unit_selling_price)}
+                  </span>
+                </td>
+                
+                <td className="py-4 px-4">
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={() => {
+                      this.props.history.push(
+                        `/stock/${stock.id}/product/${stock.order.product_id}`
+                      );
+                    }}
+                    className="d-flex align-items-center gap-2"
+                  >
+                    <i className="fa fa-eye" />
+                    View
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
+      
+      {/* Footer with Pagination */}
+      <div className="px-4 py-3 bg-light border-top">
+        {stocks.length < 1 && (
+          <div className="text-center py-5">
+            <div className="text-muted">
+              <i className="fa fa-inbox fa-2x mb-3 d-block" />
+              <h6 className="mb-2">No Stocks Found</h6>
+              <p className="mb-0 small">No stocks available for the selected date range</p>
+            </div>
+          </div>
+        )}
+        
+        {stocks.length > 0 && (
+          <div className="d-flex justify-content-between align-items-center">
+            <div className="text-muted small">
+              Showing {((page - 1) * rows) + 1} to {Math.min(page * rows, total)} of {total} stocks
+            </div>
+            <Pagination
+              total={total}
+              showTotal={(total) => `Total ${total} Stocks`}
+              onChange={this.onPage}
+              pageSize={rows}
+              current={page}
+              className="mb-0"
+            />
+          </div>
+        )}
+      </div>
+    </Card.Body>
+  </Card>
+</>
     );
   }
 }

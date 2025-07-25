@@ -599,33 +599,7 @@ export class Stock extends Component {
                         }
                       </tbody>
                     </Table>
-                    <Row>
-                      <h5 style={{ paddingTop: "15px" }}>variants</h5>
-                      <Table
-                        responsive
-                        className="table-centered table-nowrap rounded mb-0"
-                      >
-                        <thead className="thead-light">
-                          <tr>
-                            {attributes.map((attribute, key) => {
-                              return (
-                                <th className="border-0">{attribute.name}</th>
-                              );
-                            })}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {
-                            <tr>
-                              {console.log(stock.product_attributes)}
-                              {this.attributeCols(
-                                `${stock.product_attributes}`
-                              )}
-                            </tr>
-                          }
-                        </tbody>
-                      </Table>
-                    </Row>
+                    
                     
                   </Card.Body>
                 </Col>

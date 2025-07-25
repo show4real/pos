@@ -79,7 +79,7 @@ formatCurrency(x){
         {loading && <SpinDiv text={"Loading..."} />}
       <div className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
        
-      <h3>{user.branch_name} Branch</h3>
+      <h3>{user.branch_name}</h3>
 
        <ButtonGroup>
          <Button variant="outline-danger"  onClick={() => this.logOut()} size="sm">Sign Out</Button>
