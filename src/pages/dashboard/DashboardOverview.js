@@ -163,7 +163,7 @@ formatCurrency(x){
             <CounterWidget
               category="Suppliers"
               title={supplier_count}
-              period="Feb 1 - Apr 1"
+              // period="Feb 1 - Apr 1"
               percentage={28.4}
               icon={faTruck}
               iconColor="shape-tertiary"
@@ -181,7 +181,7 @@ formatCurrency(x){
             <CounterWidget
               category="Sales"
               title={this.formatCurrency(total_sales)}
-              period= {moment(fromdate).format('MMM DD YYYY')+'-'+moment(todate).format('MMM DD YYYY')}
+              // period= {moment(fromdate).format('MMM DD YYYY')+'-'+moment(todate).format('MMM DD YYYY')}
              
               icon={faCashRegister}
               iconColor="shape-tertiary"
