@@ -17,6 +17,7 @@ import SpinDiv from "../components/SpinDiv";
 import Select from 'react-select';
 
 import { Pagination } from "antd";
+import EditBarcode from "../purchase/EditBarcode";
 
 export class StockIndex extends Component {
   constructor(props) {
@@ -48,6 +49,7 @@ export class StockIndex extends Component {
       showDeleteModal: false,
       stockToDelete: null,
       deleting: false,
+      editBarcode:null
     };
   }
 
@@ -218,6 +220,16 @@ export class StockIndex extends Component {
     });
   };
 
+  toggleCloseBarcode = () => {
+    this.setState({ editBarcode: !this.state.editBarcode });
+    this.getStocks();
+  };
+
+  toggleUpdateBarcode = (editBarcode) => {
+    this.setState({ editBarcode });
+    this.getStocks();
+  };
+
   // Clear all filters
   clearAllFilters = () => {
     this.setState({
@@ -285,6 +297,7 @@ export class StockIndex extends Component {
       showDeleteModal,
       stockToDelete,
       deleting,
+      editBarcode
     } = this.state;
     
     // Custom styles for react-select
@@ -306,6 +319,10 @@ export class StockIndex extends Component {
     return (
      <>
   {loading && <SpinDiv text={"Loading..."} />}
+
+  {editBarcode && (
+            <EditBarcode stock={editBarcode} toggle={() => this.toggleCloseBarcode()} />
+          )}
   
   {/* Header with Breadcrumb */}
   <Row className="mb-4">
@@ -685,6 +702,19 @@ export class StockIndex extends Component {
                       <i className="fa fa-eye" />
                       View
                     </Button> */}
+
+                    <Button
+                      variant="outline-primary"
+                      type="submit"
+                      //disabled={saving}
+                      className="d-flex align-items-center gap-2"
+                      size="sm"
+                      onClick={() =>
+                        this.toggleUpdateBarcode(stock.order)
+                      }
+                    >
+                      Update Barcode
+                    </Button>
                     
                     {/* Show delete button only when quantity sold is 0 */}
                     {stock.quantity_sold == 0 && (
