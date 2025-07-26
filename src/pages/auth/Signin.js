@@ -1,21 +1,29 @@
-import React,{Component} from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faAngleLeft, faEnvelope, faEye, faUnlockAlt } from "@fortawesome/free-solid-svg-icons";
-import { faFacebookF, faGithub, faTwitter } from "@fortawesome/free-brands-svg-icons";
-import { Col, Row, Form, Spinner, Card, Button, FormCheck, Container, InputGroup } from '@themesberg/react-bootstrap';
-import { Link } from 'react-router-dom';
-
-import { Routes } from "../../routes";
-import BgImage from "../../assets/img/illustrations/signin.svg";
-import { faEyeSlash } from "@fortawesome/free-regular-svg-icons";
+import React, { Component } from "react";
+import { 
+  Form, 
+  Input, 
+  Button, 
+  Card, 
+  Typography, 
+  Space, 
+  Alert,
+  Row,
+  Col,
+  Divider
+} from 'antd';
+import { 
+  UserOutlined, 
+  LockOutlined, 
+  EyeInvisibleOutlined, 
+  EyeTwoTone,
+  SafetyCertificateOutlined 
+} from '@ant-design/icons';
 import { login} from "../../services/authService";
 import  { toast } from "react-toastify";
 
-
-
+const { Title, Text, Link } = Typography;
 
 export class Signin extends Component {
-
   constructor(props) {
     super(props);
     this.state = {
@@ -23,27 +31,25 @@ export class Signin extends Component {
       password: "",
       loading: false,
       error: null,
-      show: false,
     };
   }
 
-  onChange = (e, state) => {
-
-    this.setState({ [state]: e });
+  onChange = (field, value) => {
+    this.setState({ [field]: value, error: null });
   };
 
   isValid = () => {
     const { username, password } = this.state;
     const phone = /^([0]\d{10})$/;
     const email = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-    if (
+    return (
       password != null &&
       password !== "" &&
+      username &&
       (email.test(username.trim()) || phone.test(username.trim()))
-    ) {
-      return true;
-    }
+    );
   };
+
   onSubmit=(e)=>{
     e.preventDefault();
     const { username, password } = this.state;
@@ -60,115 +66,190 @@ export class Signin extends Component {
         this.setState({ loading: false, password: "" });
         toast.dismiss();
         toast.configure({ hideProgressBar: true, closeButton: false });
-        toast(
-          <div style={{ padding: 20, color: "#EC3237" }}>
-            Invalid Username or Password
-          </div>
-        );
+        this.setState({ 
+          loading: false, 
+          password: "",
+          error: "Invalid username or password. Please try again." 
+        });
         
       }
     )
   }
 
-  render() {
-    const { show, loading, username, password } = this.state;
-    return (
-      <main>
-        <section className="d-flex align-items-center my-5 mt-lg-6 mb-lg-5">
-          <Container>
-            
-            <Row className="justify-content-center form-bg-image" style={{ backgroundImage: `url(${BgImage})` }}>
-              <Col xs={12} className="d-flex align-items-center justify-content-center">
-                <div className="bg-white shadow-soft border rounded border-light p-4 p-lg-5 w-100 fmxw-500">
-                <div className="text-center text-md-center mb-4 mt-md-0">
-                    <h3 className="mb-0">INVENTORY SYSTEM </h3>
-                  </div>
-                  <div className="text-center text-md-center mb-4 mt-md-0">
-                    <h3 className="mb-0">Sign in </h3>
-                  </div>
-                  <Form className="mt-4">
-                    <Form.Group id="email" className="mb-4">
-                      <Form.Label>Your Email</Form.Label>
-                      <InputGroup>
-                        <InputGroup.Text>
-                          <FontAwesomeIcon icon={faEnvelope} />
-                        </InputGroup.Text>
-                        <Form.Control autoFocus required type="text" placeholder="Enter email or username" value={username}
-                      onChange={(e) =>
-                        this.onChange(e.target.value, "username")
-                      } />
-                      </InputGroup>
-                    </Form.Group>
-                    <Form.Group>
-                      <Form.Group id="password" className="mb-4">
-                        <Form.Label>Your Password</Form.Label>
-                        <InputGroup>
+  // onSubmit = () => {
+  //   if (!this.isValid()) return;
 
-                          <InputGroup.Text>
-                        
-                            <FontAwesomeIcon icon={show ? faEyeSlash : faEye } style={{ fontSize: 12, cursor: "pointer" }}
-                          onClick={() => this.setState({ show: !show })} />
-                            
-                          </InputGroup.Text>
-                          <Form.Control required type={show ? "text" : "password"} value={password}
-                            onChange={(e) =>
-                            this.onChange(e.target.value, "password")
-                            } placeholder="Password" 
-                          />
-                        </InputGroup>
-                      </Form.Group>
-                      <div className="d-flex justify-content-between align-items-center mb-4">
-                        {/* <Form.Check type="checkbox">
-                          <FormCheck.Input id="defaultCheck5" className="me-2" />
-                          <FormCheck.Label htmlFor="defaultCheck5" className="mb-0">Remember me</FormCheck.Label>
-                        </Form.Check> */}
-                        <Card.Link className="small text-end">Lost password?</Card.Link>
-                      </div>
-                    </Form.Group>
-                    <Button variant="primary" disabled={!this.isValid() || loading} type="submit" className="w-100" onClick={this.onSubmit}>
-                    {loading ? <Spinner animation="grow" variant="light blue" /> : <span>sign in</span>}
-                    </Button>
-                  </Form>
-                  {/* <div style={{fontWeight:'bold', fontSize:18}}>
-                    username:testforall@test.com<br/>
-                    password: 123456
-                  </div> */}
-  
-                  {/* <div className="mt-3 mb-4 text-center">
-                    <span className="fw-normal">or login with</span>
-                  </div>
-                  <div className="d-flex justify-content-center my-4">
-                    <Button variant="outline-light" className="btn-icon-only btn-pill text-facebook me-2">
-                      <FontAwesomeIcon icon={faFacebookF} />
-                    </Button>
-                    <Button variant="outline-light" className="btn-icon-only btn-pill text-twitter me-2">
-                      <FontAwesomeIcon icon={faTwitter} />
-                    </Button>
-                    <Button variant="outline-light" className="btn-icon-only btn-pil text-dark">
-                      <FontAwesomeIcon icon={faGithub} />
-                    </Button>
-                  </div>
-                  <div className="d-flex justify-content-center align-items-center mt-4">
-                    <span className="fw-normal">
-                      Not registered?
-                      <Card.Link as={Link} to={Routes.Signup.path} className="fw-bold">
-                        {` Create account `}
-                      </Card.Link>
-                    </span>
-                  </div> */}
+  //   const { username, password } = this.state;
+  //   this.setState({ loading: true, error: null });
+
+  //   // Simulate login process
+  //   setTimeout(() => {
+  //     if (username === "admin@test.com" && password === "password") {
+  //       this.setState({ loading: false });
+  //       // Redirect logic would go here
+  //       alert("Login successful!");
+  //     } else {
+  //       this.setState({ 
+  //         loading: false, 
+  //         password: "",
+  //         error: "Invalid username or password. Please try again." 
+  //       });
+  //     }
+  //   }, 1500);
+  // };
+
+  render() {
+    const { loading, username, password, error } = this.state;
+
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
+        <Row justify="center" style={{ width: '100%' }}>
+          <Col xs={22} sm={16} md={12} lg={8} xl={6}>
+            <Card
+              style={{
+                borderRadius: '16px',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                border: 'none',
+                background: 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(20px)'
+              }}
+              bodyStyle={{ padding: '40px 32px' }}
+            >
+              {/* Header */}
+              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  background: 'linear-gradient(135deg, #1890ff, #722ed1)',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                  boxShadow: '0 8px 32px rgba(24, 144, 255, 0.3)'
+                }}>
+                  <SafetyCertificateOutlined style={{ fontSize: '32px', color: 'white' }} />
                 </div>
-              </Col>
-            </Row>
-          </Container>
-        </section>
-      </main>
+                <Title level={2} style={{ margin: '0 0 8px', color: '#1f2937' }}>
+                  Inventory System
+                </Title>
+                <Text type="secondary" style={{ fontSize: '16px' }}>
+                  Welcome back! Please sign in to continue.
+                </Text>
+              </div>
+
+              {/* Error Alert */}
+              {error && (
+                <Alert
+                  message={error}
+                  type="error"
+                  showIcon
+                  style={{ marginBottom: '24px', borderRadius: '8px' }}
+                  closable
+                  onClose={() => this.setState({ error: null })}
+                />
+              )}
+
+              {/* Form Fields */}
+              <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <div>
+                  <Text strong style={{ marginBottom: '8px', display: 'block', color: '#374151' }}>
+                    Email or Username
+                  </Text>
+                  <Input
+                    size="large"
+                    placeholder="Enter your email or username"
+                    prefix={<UserOutlined style={{ color: '#9ca3af' }} />}
+                    value={username}
+                    onChange={(e) => this.onChange('username', e.target.value)}
+                    style={{
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      height: '48px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <Text strong style={{ marginBottom: '8px', display: 'block', color: '#374151' }}>
+                    Password
+                  </Text>
+                  <Input.Password
+                    size="large"
+                    placeholder="Enter your password"
+                    prefix={<LockOutlined style={{ color: '#9ca3af' }} />}
+                    value={password}
+                    onChange={(e) => this.onChange('password', e.target.value)}
+                    iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+                    style={{
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      height: '48px'
+                    }}
+                  />
+                </div>
+
+                {/* Forgot Password */}
+                <div style={{ textAlign: 'right' }}>
+                  <Link href="#" style={{ color: '#1890ff', fontWeight: 500 }}>
+                    Forgot your password?
+                  </Link>
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  type="primary"
+                  size="large"
+                  loading={loading}
+                  disabled={!this.isValid()}
+                  onClick={this.onSubmit}
+                  style={{
+                    width: '100%',
+                    height: '48px',
+                    borderRadius: '8px',
+                    background: 'linear-gradient(135deg, #1890ff, #722ed1)',
+                    border: 'none',
+                    fontWeight: 600,
+                    fontSize: '16px',
+                    boxShadow: '0 4px 15px rgba(24, 144, 255, 0.3)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 8px 25px rgba(24, 144, 255, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = '0 4px 15px rgba(24, 144, 255, 0.3)';
+                  }}
+                >
+                  {loading ? 'Signing in...' : 'Sign In'}
+                </Button>
+              </Space>
+
+              <Divider style={{ margin: '32px 0 24px' }} />
+
+             
+            </Card>
+
+            {/* Footer */}
+            <div style={{ textAlign: 'center', marginTop: '24px' }}>
+              <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px' }}>
+                © 2025 Inventory System. All rights reserved.
+              </Text>
+            </div>
+          </Col>
+        </Row>
+      </div>
     );
   }
 }
 
-export default Signin
-
-
-
-
-
+export default Signin;

@@ -19,43 +19,48 @@ export class EditBarcode extends Component {
             barcode: props.stock.barcode || '',
             id: props.stock.id,
             submitted: false,
-            scannedBarcodes: [],
+            scannedBarcode: null, // Changed to single item instead of array
         };
-        
+
         this.inputRef = React.createRef();
     }
 
-   componentDidMount() {
-      
-   
+    componentDidMount() {
         window.addEventListener("keydown", this.handleKeyPress);
-     }
+        // Auto-focus the input when component mounts
+        setTimeout(() => {
+            if (this.inputRef.current) {
+                this.inputRef.current.focus();
+            }
+        }, 100);
+    }
 
     componentWillUnmount() {
-    window.removeEventListener("keydown", this.handleKeyPress);
-  }
-
-  handleKeyPress = (e) => {
-    const tag = document.activeElement.tagName;
-
-    // If not typing in input or textarea, allow global input
-    if (tag !== "INPUT" && tag !== "TEXTAREA") {
-      if (this.inputRef.current) {
-        this.inputRef.current.focus(); // autofocus input
-      }
-
-      if (/^[a-zA-Z0-9]$/.test(e.key)) {
-        this.setState((prev) => ({
-          input: prev.input + e.key,
-        }));
-      }
-
-      if (e.key === "Enter") {
-        this.addScannedBarcode();
-        this.setState({ input: "" });
-      }
+        window.removeEventListener("keydown", this.handleKeyPress);
     }
-  };
+
+    handleKeyPress = (e) => {
+        const tag = document.activeElement.tagName;
+
+        // If not typing in input or textarea, allow global input
+        if (tag !== "INPUT" && tag !== "TEXTAREA") {
+            if (this.inputRef.current) {
+                this.inputRef.current.focus(); // autofocus input
+            }
+
+            if (/^[a-zA-Z0-9]$/.test(e.key)) {
+                this.setState((prev) => ({
+                    barcode: prev.barcode + e.key, // Fixed: was using 'input' instead of 'barcode'
+                }));
+            }
+        }
+
+        // Handle Enter key press
+        if (e.key === 'Enter' && this.state.barcode.trim()) {
+            e.preventDefault();
+            this.addScannedBarcode();
+        }
+    };
 
     onChange = (e, state) => {
         this.setState({ [state]: e });
@@ -67,16 +72,13 @@ export class EditBarcode extends Component {
         });
     };
 
-   
-
     addScannedBarcode = () => {
-        const { barcode, scannedBarcodes } = this.state;
+        const { barcode } = this.state;
         const trimmedBarcode = barcode.trim();
 
         if (!trimmedBarcode) return;
 
-        // Remove existing barcode if it exists, then add the new one
-        const filteredBarcodes = scannedBarcodes.filter(item => item.code !== trimmedBarcode);
+        // Store only one scanned barcode (replace if exists)
         const newBarcode = {
             code: trimmedBarcode,
             timestamp: new Date().toLocaleTimeString(),
@@ -84,13 +86,23 @@ export class EditBarcode extends Component {
         };
 
         this.setState({
-            scannedBarcodes: [...filteredBarcodes, newBarcode],
+            scannedBarcode: newBarcode, // Single item instead of array
+            barcode: trimmedBarcode, // Keep the barcode in input for saving
         });
+
+        // Refocus input for next scan and select text
+        setTimeout(() => {
+            if (this.inputRef.current) {
+                this.inputRef.current.focus();
+                this.inputRef.current.select();
+            }
+        }, 0);
     };
 
-    removeScannedBarcode = (id) => {
+    removeScannedBarcode = () => {
         this.setState({
-            scannedBarcodes: this.state.scannedBarcodes.filter(item => item.id !== id)
+            scannedBarcode: null,
+            barcode: '' // Clear the input as well
         });
     };
 
@@ -104,6 +116,7 @@ export class EditBarcode extends Component {
             this.setState({ saving: false });
             return;
         }
+        console.log(barcode)
 
         editBarcode({
             barcode: barcode.trim(),
@@ -131,8 +144,7 @@ export class EditBarcode extends Component {
 
     render() {
         const { stock, toggle } = this.props;
-
-        const { saving, submitted, barcode, loading, scannedBarcodes } = this.state;
+        const { saving, submitted, barcode, loading, scannedBarcode } = this.state;
 
         return (
             <>
@@ -176,8 +188,13 @@ export class EditBarcode extends Component {
                                         type="text"
                                         value={barcode}
                                         onChange={this.handleBarcodeChange}
-                                       
-                                        placeholder="Scan or enter barcode here"
+                                        onKeyPress={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                this.addScannedBarcode();
+                                            }
+                                        }}
+                                        placeholder="Scan or enter barcode here and press Enter"
                                         style={{
                                             height: "50px",
                                             fontSize: "16px",
@@ -203,68 +220,62 @@ export class EditBarcode extends Component {
                                 <div>
                                     <small className="mb-0">
                                         <strong>Instructions:</strong> Point your scanner at the barcode or manually type the code above.
-                                        Press Enter or click Save to confirm.
+                                        Press Enter to scan and confirm.
                                     </small>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Scanned Barcodes History */}
-                        {scannedBarcodes.length > 0 && (
+                        {/* Scanned Barcode Display (Single Item) */}
+                        {scannedBarcode && (
                             <div className="scanned-history-section">
                                 <div className="d-flex align-items-center justify-content-between mb-3">
                                     <h6 className="mb-0 fw-semibold">
-                                        <i className="fas fa-history me-2 text-muted"></i>
-                                        Recently Scanned
+                                        <i className="fas fa-check-circle me-2 text-success"></i>
+                                        Scanned Barcode
                                     </h6>
-                                    <span className="badge bg-primary rounded-pill">
-                                        {scannedBarcodes.length}
+                                    <span className="badge bg-success rounded-pill">
+                                        Ready
                                     </span>
                                 </div>
 
                                 <div
-                                    className="scanned-list border rounded"
+                                    className="scanned-item border rounded"
                                     style={{
-                                        maxHeight: "220px",
-                                        overflowY: "auto",
                                         backgroundColor: "#f8f9fa"
                                     }}
                                 >
-                                    {scannedBarcodes.map((item, index) => (
-                                        <div
-                                            key={item.id}
-                                            className={`d-flex justify-content-between align-items-center p-3 ${index !== scannedBarcodes.length - 1 ? 'border-bottom' : ''
-                                                }`}
-                                            style={{
-                                                backgroundColor: index % 2 === 0 ? "#ffffff" : "#f8f9fa",
-                                                transition: "background-color 0.2s ease"
-                                            }}
-                                        >
-                                            <div className="flex-grow-1">
-                                                <div className="d-flex align-items-center mb-1">
-                                                    <i className="fas fa-barcode me-2 text-primary"></i>
-                                                    <strong style={{ fontSize: "15px" }}>{item.code}</strong>
-                                                </div>
-                                                <small className="text-muted">
-                                                    <i className="fas fa-clock me-1"></i>
-                                                    Scanned: {item.timestamp}
-                                                </small>
+                                    <div
+                                        className="d-flex justify-content-between align-items-center p-3"
+                                        style={{
+                                            backgroundColor: "#ffffff",
+                                            borderRadius: "6px"
+                                        }}
+                                    >
+                                        <div className="flex-grow-1">
+                                            <div className="d-flex align-items-center mb-1">
+                                                <i className="fas fa-barcode me-2 text-primary"></i>
+                                                <strong style={{ fontSize: "15px" }}>{scannedBarcode.code}</strong>
                                             </div>
-                                            <Button
-                                                size="sm"
-                                                variant="outline-danger"
-                                                onClick={() => this.removeScannedBarcode(item.id)}
-                                                style={{
-                                                    borderRadius: "6px",
-                                                    fontSize: "12px",
-                                                    padding: "4px 8px"
-                                                }}
-                                                title="Remove this barcode"
-                                            >
-                                                <i className="fas fa-trash-alt"></i>
-                                            </Button>
+                                            <small className="text-muted">
+                                                <i className="fas fa-clock me-1"></i>
+                                                Scanned: {scannedBarcode.timestamp}
+                                            </small>
                                         </div>
-                                    ))}
+                                        <Button
+                                            size="sm"
+                                            variant="outline-danger"
+                                            onClick={this.removeScannedBarcode}
+                                            style={{
+                                                borderRadius: "6px",
+                                                fontSize: "12px",
+                                                padding: "4px 8px"
+                                            }}
+                                            title="Remove this barcode"
+                                        >
+                                            <i className="fas fa-trash-alt"></i>
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         )}

@@ -38,6 +38,7 @@ import {
   faUser,
   faCreditCard,
   faMoneyBillWaveAlt,
+  faBarcode,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   faProductHunt,
@@ -97,15 +98,10 @@ export let routes = [
     path: "/sales_order",
     component: SalesOrderIndex,
     title: "Sales Order",
-    icon: faRuler,
+    icon: faSalesforce,
   },
   // { path: "/creditors", component: CreditorIndex, title:"Creditors", icon:faCreditCard },
-  {
-    path: "/expenses",
-    component: ExpenseIndex,
-    title: "Expenses",
-    icon: faMoneyBillWaveAlt,
-  },
+  
 
   {
     path: "/pos_transactions",
@@ -113,10 +109,16 @@ export let routes = [
     title: "Transactions",
     icon: faCalculator,
   },
-  // {
-  //   path: "/barcode",
-  //   component: Barcode,
-  //   title: "Barcode",
-  //   icon: faCalculator,
-  // },
+  {
+    path: "/barcode",
+    component: Barcode,
+    title: "Barcode",
+    icon: faBarcode,
+  },
+  {
+    path: "/expenses",
+    component: ExpenseIndex,
+    title: "Expenses",
+    icon: faMoneyBillWaveAlt,
+  },
 ];
