@@ -82,3 +82,22 @@ export function returnStock(data) {
     authService.handleResponse
   );
 }
+
+export function createStock(data) {
+  const requestOptions = {
+    method: "POST",
+    headers: authHeader(),
+    body: JSON.stringify(data),
+  };
+  return fetch(`${settings.API_URL}create/stocks`, requestOptions).then(
+    authService.handleResponse
+  );
+}
+
+export function deleteStock(id) {
+    const requestOptions = {
+        method: 'POST',
+        headers: authHeader()
+    };
+    return fetch(`${settings.API_URL}delete/stock/${id}`, requestOptions).then(authService.handleResponse);
+}

@@ -18,15 +18,7 @@ import {
   Form,
 } from "@themesberg/react-bootstrap";
 
-import Profile3 from "../../assets/img/team/profile-picture-3.jpg";
 import SpinDiv from "../components/SpinDiv";
-import axios from "axios";
-import settings from "../../services/settings";
-import { authHeader } from "../../services/authHeader";
-import { authService } from "../../services/authService";
-import { counter } from "@fortawesome/fontawesome-svg-core";
-import { Cart } from "../products/Cart";
-import AsyncSelect from "react-select/async";
 import AddStock from "./AddStock";
 import EditStock from "./EditStock";
 import moment from "moment";

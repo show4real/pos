@@ -164,6 +164,17 @@ export default (props = {}) => {
       <CSSTransition timeout={300} in={show} classNames="sidebar-transition">
         <SimpleBar
           className={`collapse ${showClass} sidebar d-md-block bg-primary text-white`}
+          style={{
+            background: 'linear-gradient(180deg, #001529 0%, #002140 50%, #003a65 100%)',
+            borderRight: '1px solid rgba(255,255,255,0.1)',
+            boxShadow: '4px 0 20px rgba(0,0,0,0.15)',
+            height: '100vh',
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            zIndex: 1000,
+          }}
         >
           <div className="sidebar-inner px-4 pt-3">
             <div className="user-card d-flex d-md-none align-items-center justify-content-between justify-content-md-center pb-4">
@@ -222,25 +233,7 @@ export default (props = {}) => {
 
               <Dropdown.Divider className="my-3 border-indigo" />
 
-              {/*<CollapsableNavItem eventKey="components/" title="Components" icon={faBoxOpen}>
-                <NavItem title="Accordion" link={Routes.Accordions.path} />
-                <NavItem title="Alerts" link={Routes.Alerts.path} />
-                <NavItem title="Badges" link={Routes.Badges.path} />
-                <NavItem external title="Widgets" link="https://demo.themesberg.com/volt-pro-react/#/components/widgets" target="_blank" badgeText="Pro" />
-                <NavItem title="Breadcrumbs" link={Routes.Breadcrumbs.path} />
-                <NavItem title="Buttons" link={Routes.Buttons.path} />
-                <NavItem title="Forms" link={Routes.Forms.path} />
-                <NavItem title="Modals" link={Routes.Modals.path} />
-                <NavItem title="Navbars" link={Routes.Navbars.path} />
-                <NavItem title="Navs" link={Routes.Navs.path} />
-                <NavItem title="Pagination" link={Routes.Pagination.path} />
-                <NavItem title="Popovers" link={Routes.Popovers.path} />
-                <NavItem title="Progress" link={Routes.Progress.path} />
-                <NavItem title="Tables" link={Routes.Tables.path} />
-                <NavItem title="Tabs" link={Routes.Tabs.path} />
-                <NavItem title="Toasts" link={Routes.Toasts.path} />
-                <NavItem title="Tooltips" link={Routes.Tooltips.path} />
-              </CollapsableNavItem>*/}
+
             </Nav>
           </div>
         </SimpleBar>

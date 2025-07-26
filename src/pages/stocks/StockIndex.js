@@ -1,8 +1,7 @@
 import React, { Component } from "react";
 import { Input, Media } from "reactstrap";
-import { getStock } from "../../services/stockService";
+import { getStock, deleteStock } from "../../services/stockService";
 import { toast } from "react-toastify";
-import Cart from "../products/Cart";
 import {
   Col,
   Row,
@@ -12,6 +11,7 @@ import {
   ButtonGroup,
   Breadcrumb,
   Form,
+  Modal,
 } from "@themesberg/react-bootstrap";
 import SpinDiv from "../components/SpinDiv";
 import Select from 'react-select';
@@ -44,6 +44,10 @@ export class StockIndex extends Component {
       // For searchable dropdown
       selectedProduct: null,
       productOptions: [],
+      // For delete confirmation modal
+      showDeleteModal: false,
+      stockToDelete: null,
+      deleting: false,
     };
   }
 
@@ -97,6 +101,49 @@ export class StockIndex extends Component {
         this.setState({ loading: false });
       }
     );
+  };
+
+  // Delete stock functionality
+  handleDeleteStock = (stock) => {
+    this.setState({
+      showDeleteModal: true,
+      stockToDelete: stock,
+    });
+  };
+
+ confirmDeleteStock = async () => {
+  const { stockToDelete } = this.state;
+
+  this.setState({ deleting: true });
+
+  try {
+    const res = await deleteStock(stockToDelete.id);
+    
+
+    this.setState({
+      deleting: false,
+      showDeleteModal: false,
+      stockToDelete: null,
+    }, () => {
+      this.getStocks();
+    });
+
+    this.showToast("Stock deleted successfully!");
+    
+  } catch (error) {
+    console.error("Error deleting stock:", error);
+    this.showToast("Stock cannot be deleted");
+    this.setState({ deleting: false });
+  }
+   this.getStocks();
+};
+
+
+  cancelDeleteStock = () => {
+    this.setState({
+      showDeleteModal: false,
+      stockToDelete: null,
+    });
   };
 
   sleep = (ms) =>
@@ -218,23 +265,12 @@ export class StockIndex extends Component {
   render() {
     const {
       stocks,
-      value,
       order,
-      products,
-      attributes,
       showFilter,
       total,
-      cart_sold,
-      cart_details,
-      total_cost,
-      addStock,
-      addSales,
-      editStock,
-      suppliers,
-      total_cart,
+      
       page,
-      cartCheckout,
-      cartItem,
+      
       rows,
       search,
       loading,
@@ -246,6 +282,9 @@ export class StockIndex extends Component {
       end_date,
       selectedProduct,
       productOptions,
+      showDeleteModal,
+      stockToDelete,
+      deleting,
     } = this.state;
     
     // Custom styles for react-select
@@ -275,7 +314,7 @@ export class StockIndex extends Component {
         <div className="d-block mb-4 mb-md-0">
           <Breadcrumb listProps={{ className: "breadcrumb-text-dark text-primary mb-0" }}>
             <Breadcrumb.Item href="/" className="text-muted">Home</Breadcrumb.Item>
-            <Breadcrumb.Item href="#stocks" className="text-primary fw-semibold">Stocks</Breadcrumb.Item>
+            <Breadcrumb.Item href="/stocked" className="text-primary fw-semibold">Stocks</Breadcrumb.Item>
           </Breadcrumb>
         </div>
       </div>
@@ -632,19 +671,35 @@ export class StockIndex extends Component {
                 </td>
                 
                 <td className="py-4 px-4">
-                  <Button
-                    variant="outline-primary"
-                    size="sm"
-                    onClick={() => {
-                      this.props.history.push(
-                        `/stock/${stock.id}/product/${stock.order.product_id}`
-                      );
-                    }}
-                    className="d-flex align-items-center gap-2"
-                  >
-                    <i className="fa fa-eye" />
-                    View
-                  </Button>
+                  <div className="d-flex gap-2">
+                    {/* <Button
+                      variant="outline-primary"
+                      size="sm"
+                      onClick={() => {
+                        this.props.history.push(
+                          `/stock/${stock.id}/product/${stock.order.product_id}`
+                        );
+                      }}
+                      className="d-flex align-items-center gap-2"
+                    >
+                      <i className="fa fa-eye" />
+                      View
+                    </Button> */}
+                    
+                    {/* Show delete button only when quantity sold is 0 */}
+                    {stock.quantity_sold == 0 && (
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={() => this.handleDeleteStock(stock)}
+                        className="d-flex align-items-center gap-2"
+                        title="Delete stock (only available when no items have been sold)"
+                      >
+                        <i className="fa fa-trash" />
+                        Delete
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -692,6 +747,86 @@ export class StockIndex extends Component {
       </div>
     </Card.Body>
   </Card>
+
+  {/* Delete Confirmation Modal */}
+  <Modal show={showDeleteModal} onHide={this.cancelDeleteStock} centered>
+    <Modal.Header closeButton>
+      <Modal.Title className="text-danger">
+        <i className="fa fa-exclamation-triangle me-2" />
+        Confirm Delete
+      </Modal.Title>
+    </Modal.Header>
+    <Modal.Body>
+      {stockToDelete && (
+        <div>
+          <p className="mb-3">
+            Are you sure you want to delete this stock entry?
+          </p>
+          <div className="bg-light p-3 rounded mb-3">
+            <div className="d-flex align-items-center mb-2">
+              {stockToDelete.product_image ? (
+                <img
+                  src={stockToDelete.product_image}
+                  alt={stockToDelete.product_name}
+                  className="rounded me-3"
+                  style={{ width: '40px', height: '40px', objectFit: 'cover' }}
+                />
+              ) : (
+                <div 
+                  className="bg-secondary rounded d-flex align-items-center justify-content-center text-white me-3"
+                  style={{ width: '40px', height: '40px' }}
+                >
+                  <i className="fa fa-image" />
+                </div>
+              )}
+              <div>
+                <div className="fw-semibold">{stockToDelete.product_name}</div>
+                <small className="text-muted">
+                  Purchase ID: {stockToDelete.order.tracking_id}
+                </small>
+              </div>
+            </div>
+            <div className="small text-muted">
+              <div>Branch: {stockToDelete.branch_name}</div>
+              <div>Initial Stock: {stockToDelete.stock_quantity}</div>
+              <div>Quantity Sold: {stockToDelete.quantity_sold}</div>
+            </div>
+          </div>
+          <div className="alert alert-warning">
+            <i className="fa fa-info-circle me-2" />
+            <strong>Warning:</strong> This action cannot be undone. The stock entry will be permanently removed from the system.
+          </div>
+        </div>
+      )}
+    </Modal.Body>
+    <Modal.Footer>
+      <Button
+        variant="secondary"
+        onClick={this.cancelDeleteStock}
+        disabled={deleting}
+      >
+        Cancel
+      </Button>
+      <Button
+        variant="danger"
+        onClick={this.confirmDeleteStock}
+        disabled={deleting}
+        className="d-flex align-items-center gap-2"
+      >
+        {deleting ? (
+          <>
+            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            Deleting...
+          </>
+        ) : (
+          <>
+            <i className="fa fa-trash" />
+            Delete Stock
+          </>
+        )}
+      </Button>
+    </Modal.Footer>
+  </Modal>
 </>
     );
   }

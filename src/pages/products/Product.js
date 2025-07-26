@@ -274,28 +274,26 @@ export class Product extends Component {
                   >
                     Add product
                   </Button>
-                  
-                  <Button variant="outline-primary" size="sm"  
-                  onClick={() => {this.props.history.push('/purchase_orders')}}
-
-                  >
-                    Stocks
-                  </Button>
-
-                  <Button variant="outline-primary" size="sm"  
+                   <Button variant="outline-primary" size="sm"  
                 
                   onClick={() => this.toggleAddCategory()} 
                   >
                     Create categories
                   </Button>
-
                   
-                  {/* <Button variant="outline-primary" size="sm"  
-                
-                  onClick={() => this.toggleAddBrands()} 
+                  <Button variant="outline-primary" size="sm"  
+                  onClick={() => {this.props.history.push('/purchase_orders')}}
+
                   >
-                    Create Brands
-                  </Button> */}
+                    Purchase Order
+                  </Button>
+
+                   <Button variant="outline-primary" size="sm"  
+                  onClick={() => {this.props.history.push('/stocked')}}
+
+                  >
+                    Stocks
+                  </Button>
                   
                  
                 </ButtonGroup>

@@ -160,6 +160,15 @@ export default (props = {}) => {
       <CSSTransition timeout={300} in={show} classNames="sidebar-transition">
         <SimpleBar
           className={`collapse ${showClass} sidebar d-md-block bg-primary text-white`}
+          style={{background: 'linear-gradient(180deg, #001529 0%, #002140 50%, #003a65 100%)',
+    borderRight: '1px solid rgba(255,255,255,0.1)',
+    boxShadow: '4px 0 20px rgba(0,0,0,0.15)',
+    height: '100vh',
+    position: 'fixed',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 1000,}}
         >
           <div className="sidebar-inner px-4 pt-3">
             <div className="user-card d-flex d-md-none align-items-center justify-content-between justify-content-md-center pb-4">
