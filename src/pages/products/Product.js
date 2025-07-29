@@ -59,6 +59,7 @@ export class Product extends Component {
       categories: [],
       cat: '',
       br: '',
+      brand: '', // Added missing brand state
       showFilter: savedState.showFilter || false,
     };
     
@@ -97,6 +98,8 @@ export class Product extends Component {
   };
 
   componentDidMount() {
+    // Load categories first, then search products
+    this.getCategories();
     this.searchProducts();
     this.cartItem = localStorage.removeItem("cart");
   }
@@ -130,6 +133,7 @@ export class Product extends Component {
   }
 
   getCategories = () => {
+    this.setState({ loading: true });
     getcategories().then(
       (res) => {
         this.setState({
@@ -138,15 +142,26 @@ export class Product extends Component {
         });
       },
       (error) => {
+        console.error('Error fetching categories:', error);
         this.setState({ loading: false });
       }
     );
   };
 
   searchProducts = () => {
-    const { page, rows, search, category, cat, br, brand, products } = this.state;
+    const { page, rows, search, category, brand } = this.state;
     this.setState({ loading: true });
-    getProducts({ page, rows, category, brand, search, products }).then(
+    
+    // Fixed: Removed 'products' from the API call parameters
+    const searchParams = { 
+      page, 
+      rows, 
+      search,
+      ...(category && { category }), // Only include category if it has a value
+      ...(brand && { brand }) // Only include brand if it has a value
+    };
+    
+    getProducts(searchParams).then(
       (res) => {
         const newProducts = res.products.data.map(item => ({
           id: item.id,
@@ -167,21 +182,39 @@ export class Product extends Component {
         });
       },
       (error) => {
+        console.error('Error fetching products:', error);
         this.setState({ loading: false });
       }
     );
   };
 
   toggleFilter = (e) => {
-    this.setState({ cat: 'hello', showFilter: !this.state.showFilter }, () => {
-      console.log(this.state.cat)
-      this.getCategories();
+    this.setState({ 
+      cat: 'hello', 
+      showFilter: !this.state.showFilter 
+    }, () => {
+      console.log(this.state.cat);
+      // Only fetch categories if we don't have them or if showing filter
+      if (this.state.showFilter && this.state.categories.length === 0) {
+        this.getCategories();
+      }
     });
   }
 
   onFilter = async (e, filter) => {
-    console.log(e);
+    console.log('Filtering by:', filter, 'Value:', e);
     await this.setState({[filter]: e, page: 1}); // Reset to page 1 when filtering
+    await this.searchProducts();
+  }
+
+  // Clear all filters
+  clearFilters = async () => {
+    await this.setState({
+      category: '',
+      brand: '',
+      search: '',
+      page: 1
+    });
     await this.searchProducts();
   }
 
@@ -345,9 +378,9 @@ export class Product extends Component {
                     style={{ marginRight: 10, width: "fit-content" }}
                     onChange={(e) => this.onFilter(e.target.value, "category")}
                   >
-                    <option value="">Select category</option>
+                    <option value="">All Categories</option>
                     {categories.map((p, index) => (
-                      <option value={p.id} key={p}>
+                      <option value={p.id} key={p.id}>
                         {p.name}
                       </option>
                     ))}
@@ -355,14 +388,21 @@ export class Product extends Component {
                 </Form.Group>
               </Col>
               
-              <Col md={2} style={{marginTop:10}}>
+              <Col md={2} style={{marginTop:32}}>
                 <Button
-                  color="warning"
+                  variant="outline-warning"
                   onClick={this.toggleFilter}
                   size="sm"
                   style={{ marginRight: 10 }}
                 >
                   Hide Filters
+                </Button>
+                <Button
+                  variant="outline-secondary"
+                  onClick={this.clearFilters}
+                  size="sm"
+                >
+                  Clear All
                 </Button>
               </Col>
             </Row>
@@ -380,15 +420,16 @@ export class Product extends Component {
                   <th className="border-0">S/N</th>
                   <th className="border-0">Product</th>
                   <th className="border-0">category</th>
+                  <th className="border-0">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {products.map((product, key) => {
                   return (
-                    <tr key={key} style={{fontWeight:"bold",textTransform:"capitalize"}}>
+                    <tr key={product.id} style={{fontWeight:"bold",textTransform:"capitalize"}}>
                       <td>{key+1}</td>
                       <td>{product.name}</td>                
-                      <td key={key} className="hover-list" to="/" onClick={() => {
+                      <td className="hover-list" onClick={() => {
                           this.navigateToProduct(product.id);
                         }}>{product.category_name}</td>
                       <td>
@@ -413,7 +454,6 @@ export class Product extends Component {
                           </Button>
                         </ButtonGroup>
                       </td>
-                      <td></td>
                     </tr>
                   );
                 })}
@@ -424,7 +464,7 @@ export class Product extends Component {
                 {products.length < 1 &&
                   <div style={{color: '#ccc', alignSelf: 'center', padding: 10, fontSize: 13}}>
                     <i className="fa fa-ban" style={{marginRight: 5}}/>
-                    No Products
+                    No Products Found
                   </div>
                 }
                 {products.length > 0 && 
