@@ -15,6 +15,7 @@ import {
 } from "@themesberg/react-bootstrap";
 import SpinDiv from "../components/SpinDiv";
 import Select from 'react-select';
+import dayjs from 'dayjs';
 
 import { Pagination } from "antd";
 import EditBarcode from "../purchase/EditBarcode";
@@ -227,7 +228,7 @@ export class StockIndex extends Component {
 
   toggleUpdateBarcode = (editBarcode) => {
     this.setState({ editBarcode });
-    this.getStocks();
+    //this.getStocks();
   };
 
   // Clear all filters
@@ -627,6 +628,9 @@ export class StockIndex extends Component {
                 
                 <td className="py-4 px-4">
                   <span className="text-muted">{stock.branch_name}</span>
+                   <div className="text-muted">
+                    {dayjs(stock.created_at).format('MMMM D, YYYY h:mm A')}
+                  </div>
                 </td>
                 
                 <td className="py-4 px-4">
