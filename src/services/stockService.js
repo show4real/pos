@@ -83,6 +83,17 @@ export function returnStock(data) {
   );
 }
 
+export function moveStock(data) {
+  const requestOptions = {
+    method: "POST",
+    headers: authHeader(),
+    body: JSON.stringify(data),
+  };
+  return fetch(`${settings.API_URL}movestock`, requestOptions).then(
+    authService.handleResponse
+  );
+}
+
 export function createStock(data) {
   const requestOptions = {
     method: "POST",

@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import { Input, Media } from "reactstrap";
-import { getStock, deleteStock } from "../../services/stockService";
+import { getStock, deleteStock, moveStock } from "../../services/stockService";
+import { getAllBranches } from "../../services/branchService";
 import { toast } from "react-toastify";
 import {
   Col,
@@ -50,16 +51,42 @@ export class StockIndex extends Component {
       showDeleteModal: false,
       stockToDelete: null,
       deleting: false,
-      editBarcode:null
+      editBarcode: null,
+      // For move stock modal
+      showMoveModal: false,
+      stockToMove: null,
+      moving: false,
+      branches: [],
+      selectedToBranch: null,
+      moveQuantity: 0,
+      maxMoveQuantity: 0,
     };
   }
 
   componentDidMount() {
     this.getStocks();
+    this.getBranches();
   }
 
   showToast = (msg) => {
     toast(<div style={{ padding: 20, color: "success" }}>{msg}</div>);
+  };
+
+  showErrorToast = (msg) => {
+    toast.error(<div style={{ padding: 20 }}>{msg}</div>);
+  };
+
+  getBranches = () => {
+    getAllBranches().then(
+      (res) => {
+        this.setState({
+          branches: res.branches || [],
+        });
+      },
+      (error) => {
+        console.error("Error fetching branches:", error);
+      }
+    );
   };
 
   getStocks = () => {
@@ -114,38 +141,128 @@ export class StockIndex extends Component {
     });
   };
 
- confirmDeleteStock = async () => {
-  const { stockToDelete } = this.state;
+  confirmDeleteStock = async () => {
+    const { stockToDelete } = this.state;
 
-  this.setState({ deleting: true });
+    this.setState({ deleting: true });
 
-  try {
-    const res = await deleteStock(stockToDelete.id);
-    
+    try {
+      const res = await deleteStock(stockToDelete.id);
+      
+      this.setState({
+        deleting: false,
+        showDeleteModal: false,
+        stockToDelete: null,
+      }, () => {
+        this.getStocks();
+      });
 
-    this.setState({
-      deleting: false,
-      showDeleteModal: false,
-      stockToDelete: null,
-    }, () => {
-      this.getStocks();
-    });
-
-    this.showToast("Stock deleted successfully!");
-    
-  } catch (error) {
-    console.error("Error deleting stock:", error);
-    this.showToast("Stock cannot be deleted");
-    this.setState({ deleting: false });
-  }
-   this.getStocks();
-};
-
+      this.showToast("Stock deleted successfully!");
+      
+    } catch (error) {
+      console.error("Error deleting stock:", error);
+      this.showErrorToast("Stock cannot be deleted");
+      this.setState({ deleting: false });
+    }
+    this.getStocks();
+  };
 
   cancelDeleteStock = () => {
     this.setState({
       showDeleteModal: false,
       stockToDelete: null,
+    });
+  };
+
+  // Move stock functionality
+  handleMoveStock = (stock) => {
+    const maxMoveQuantity = stock.in_stock;
+    const branchOptions = this.state.branches
+      .filter(branch => branch.id !== parseInt(this.state.branch_id))
+      .map(branch => ({
+        value: branch.id,
+        label: branch.name,
+      }));
+
+    this.setState({
+      showMoveModal: true,
+      stockToMove: stock,
+      maxMoveQuantity: maxMoveQuantity,
+      moveQuantity: maxMoveQuantity > 0 ? 1 : 0,
+      selectedToBranch: null,
+      branchOptions: branchOptions,
+    });
+  };
+
+  handleMoveQuantityChange = (e) => {
+    const value = parseInt(e.target.value) || 0;
+    const { maxMoveQuantity } = this.state;
+    
+    if (value <= maxMoveQuantity && value >= 0) {
+      this.setState({ moveQuantity: value });
+    }
+  };
+
+  handleToBranchSelect = (selectedOption) => {
+    this.setState({ selectedToBranch: selectedOption });
+  };
+
+  confirmMoveStock = async () => {
+    const { stockToMove, selectedToBranch, moveQuantity } = this.state;
+
+    if (!selectedToBranch) {
+      this.showErrorToast("Please select a destination branch");
+      return;
+    }
+
+    if (moveQuantity <= 0) {
+      this.showErrorToast("Please enter a valid quantity to move");
+      return;
+    }
+
+    if (moveQuantity > stockToMove.in_stock) {
+      this.showErrorToast("Cannot move more than available stock");
+      return;
+    }
+
+    this.setState({ moving: true });
+
+    try {
+      // Assuming you have a moveStock service function
+      const res = await moveStock({
+        stock_id: stockToMove.id,
+        from_branch_id: this.state.branch_id,
+        to_branch_id: selectedToBranch.value,
+        quantity: moveQuantity,
+        product_id: stockToMove.order.product_id,
+        order_id: stockToMove.order.id,
+      });
+
+      this.setState({
+        moving: false,
+        showMoveModal: false,
+        stockToMove: null,
+        selectedToBranch: null,
+        moveQuantity: 0,
+      }, () => {
+        this.getStocks();
+      });
+
+      this.showToast(`Successfully moved ${moveQuantity} units to ${selectedToBranch.label}`);
+      
+    } catch (error) {
+      console.error("Error moving stock:", error);
+      this.showErrorToast("Failed to move stock. Please try again.");
+      this.setState({ moving: false });
+    }
+  };
+
+  cancelMoveStock = () => {
+    this.setState({
+      showMoveModal: false,
+      stockToMove: null,
+      selectedToBranch: null,
+      moveQuantity: 0,
     });
   };
 
@@ -228,7 +345,6 @@ export class StockIndex extends Component {
 
   toggleUpdateBarcode = (editBarcode) => {
     this.setState({ editBarcode });
-    //this.getStocks();
   };
 
   // Clear all filters
@@ -281,9 +397,7 @@ export class StockIndex extends Component {
       order,
       showFilter,
       total,
-      
       page,
-      
       rows,
       search,
       loading,
@@ -298,7 +412,15 @@ export class StockIndex extends Component {
       showDeleteModal,
       stockToDelete,
       deleting,
-      editBarcode
+      editBarcode,
+      // Move stock state
+      showMoveModal,
+      stockToMove,
+      moving,
+      selectedToBranch,
+      branchOptions,
+      moveQuantity,
+      maxMoveQuantity,
     } = this.state;
     
     // Custom styles for react-select
@@ -692,33 +814,35 @@ export class StockIndex extends Component {
                 </td>
                 
                 <td className="py-4 px-4">
-                  <div className="d-flex gap-2">
-                    {/* <Button
-                      variant="outline-primary"
-                      size="sm"
-                      onClick={() => {
-                        this.props.history.push(
-                          `/stock/${stock.id}/product/${stock.order.product_id}`
-                        );
-                      }}
-                      className="d-flex align-items-center gap-2"
-                    >
-                      <i className="fa fa-eye" />
-                      View
-                    </Button> */}
-
-                    <Button
-                      variant="outline-primary"
-                      type="submit"
-                      //disabled={saving}
-                      className="d-flex align-items-center gap-2"
-                      size="sm"
-                      onClick={() =>
-                        this.toggleUpdateBarcode(stock.order)
-                      }
-                    >
-                      Update Barcode
-                    </Button>
+                  <div className="d-flex flex-column gap-2">
+                    <div className="d-flex gap-2">
+                      <Button
+                        variant="outline-primary"
+                        type="submit"
+                        className="d-flex align-items-center gap-2"
+                        size="sm"
+                        onClick={() =>
+                          this.toggleUpdateBarcode(stock.order)
+                        }
+                      >
+                        <i className="fa fa-barcode" />
+                        Update Barcode
+                      </Button>
+                      
+                      {/* Move Stock Button - Show only when there's stock to move */}
+                      {stock.in_stock > 0 && (
+                        <Button
+                          variant="outline-info"
+                          size="sm"
+                          onClick={() => this.handleMoveStock(stock)}
+                          className="d-flex align-items-center gap-2"
+                          title={`Move stock to another branch (${stock.in_stock} available)`}
+                        >
+                          <i className="fa fa-exchange-alt" />
+                          Move Stock
+                        </Button>
+                      )}
+                    </div>
                     
                     {/* Show delete button only when quantity sold is 0 */}
                     {stock.quantity_sold == 0 && (
@@ -856,6 +980,187 @@ export class StockIndex extends Component {
           <>
             <i className="fa fa-trash" />
             Delete Stock
+          </>
+        )}
+      </Button>
+    </Modal.Footer>
+  </Modal>
+
+  {/* Move Stock Modal */}
+  <Modal show={showMoveModal} onHide={this.cancelMoveStock} centered size="lg">
+    <Modal.Header closeButton>
+      <Modal.Title className="text-info">
+        <i className="fa fa-exchange-alt me-2" />
+        Move Stock to Another Branch
+      </Modal.Title>
+    </Modal.Header>
+    <Modal.Body>
+      {stockToMove && (
+        <div>
+          {/* Stock Information */}
+          <div className="bg-light p-3 rounded mb-4">
+            <h6 className="fw-semibold mb-3 text-muted">Stock Information</h6>
+            <div className="d-flex align-items-center mb-3">
+              {stockToMove.product_image ? (
+                <img
+                  src={stockToMove.product_image}
+                  alt={stockToMove.product_name}
+                  className="rounded me-3"
+                  style={{ width: '60px', height: '60px', objectFit: 'cover' }}
+                />
+              ) : (
+                <div 
+                  className="bg-secondary rounded d-flex align-items-center justify-content-center text-white me-3"
+                  style={{ width: '60px', height: '60px' }}
+                >
+                  <i className="fa fa-image" />
+                </div>
+              )}
+              <div className="flex-grow-1">
+                <div className="fw-semibold h5 mb-1">{stockToMove.product_name}</div>
+                <div className="text-muted small">
+                  Purchase ID: {stockToMove.order.tracking_id}
+                </div>
+                <div className="text-muted small">
+                  Current Branch: <span className="fw-semibold">{stockToMove.branch_name}</span>
+                </div>
+              </div>
+            </div>
+            
+            <Row>
+              <Col md={4}>
+                <div className="text-center p-2 bg-white rounded">
+                  <div className="text-muted small">Available Stock</div>
+                  <div className="fw-bold text-success h4">{stockToMove.in_stock}</div>
+                </div>
+              </Col>
+              <Col md={4}>
+                <div className="text-center p-2 bg-white rounded">
+                  <div className="text-muted small">Selling Price</div>
+                  <div className="fw-bold text-primary">{this.formatCurrency(stockToMove.order.unit_selling_price)}</div>
+                </div>
+              </Col>
+              <Col md={4}>
+                <div className="text-center p-2 bg-white rounded">
+                  <div className="text-muted small">Total Value</div>
+                  <div className="fw-bold text-warning">
+                    {this.formatCurrency(stockToMove.in_stock * stockToMove.order.unit_selling_price)}
+                  </div>
+                </div>
+              </Col>
+            </Row>
+          </div>
+
+          {/* Move Configuration */}
+          <Row>
+            <Col md={8}>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-semibold">
+                  <i className="fa fa-building me-2" />
+                  Select Destination Branch
+                </Form.Label>
+                <Select
+                  value={selectedToBranch}
+                  onChange={this.handleToBranchSelect}
+                  options={branchOptions}
+                  placeholder="Choose a branch to move stock to..."
+                  isClearable
+                  isSearchable
+                  styles={selectStyles}
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                />
+                <Form.Text className="text-muted">
+                  Select the branch where you want to transfer the stock
+                </Form.Text>
+              </Form.Group>
+            </Col>
+            <Col md={4}>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-semibold">
+                  <i className="fa fa-sort-numeric-up me-2" />
+                  Quantity to Move
+                </Form.Label>
+                <Form.Control
+                  type="number"
+                  min="1"
+                  max={maxMoveQuantity}
+                  value={moveQuantity}
+                  onChange={this.handleMoveQuantityChange}
+                  placeholder="Enter quantity"
+                />
+                <Form.Text className="text-muted">
+                  Max: {maxMoveQuantity} units
+                </Form.Text>
+              </Form.Group>
+            </Col>
+          </Row>
+
+          {/* Move Summary */}
+          {selectedToBranch && moveQuantity > 0 && (
+            <div className="alert alert-info">
+              <h6 className="fw-semibold mb-2">
+                <i className="fa fa-info-circle me-2" />
+                Move Summary
+              </h6>
+              <div className="mb-2">
+                <strong>Moving:</strong> {moveQuantity} units of {stockToMove.product_name}
+              </div>
+              <div className="mb-2">
+                <strong>From:</strong> {stockToMove.branch_name}
+              </div>
+              <div className="mb-2">
+                <strong>To:</strong> {selectedToBranch.label}
+              </div>
+              <div className="mb-2">
+                <strong>Total Value:</strong> {this.formatCurrency(moveQuantity * stockToMove.order.unit_selling_price)}
+              </div>
+              <div>
+                <strong>Remaining in Current Branch:</strong> {stockToMove.in_stock - moveQuantity} units
+              </div>
+            </div>
+          )}
+
+          {/* Validation Messages */}
+          {moveQuantity > maxMoveQuantity && (
+            <div className="alert alert-danger">
+              <i className="fa fa-exclamation-triangle me-2" />
+              Cannot move more than {maxMoveQuantity} units (available stock).
+            </div>
+          )}
+
+          {moveQuantity <= 0 && (
+            <div className="alert alert-warning">
+              <i className="fa fa-info-circle me-2" />
+              Please enter a valid quantity to move.
+            </div>
+          )}
+        </div>
+      )}
+    </Modal.Body>
+    <Modal.Footer>
+      <Button
+        variant="secondary"
+        onClick={this.cancelMoveStock}
+        disabled={moving}
+      >
+        Cancel
+      </Button>
+      <Button
+        variant="info"
+        onClick={this.confirmMoveStock}
+        disabled={moving || !selectedToBranch || moveQuantity <= 0 || moveQuantity > maxMoveQuantity}
+        className="d-flex align-items-center gap-2"
+      >
+        {moving ? (
+          <>
+            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            Moving Stock...
+          </>
+        ) : (
+          <>
+            <i className="fa fa-exchange-alt" />
+            Move Stock
           </>
         )}
       </Button>
