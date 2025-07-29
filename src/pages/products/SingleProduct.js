@@ -1,19 +1,9 @@
 import React, { Component } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faBoxOpen,
-  faCartArrowDown,
-  faChevronDown,
-  faClipboard,
-  faCommentDots,
-} from "@fortawesome/free-solid-svg-icons";
-import { ChoosePhotoWidget, ProfileCardWidget } from "../../components/Widgets";
+
 import { getProduct, updateProduct } from "../../services/productService";
 import AttributeOptions from "./AttributeOptions";
-import styles from "../../assets/css/image.module.css";
 import {
-  getPurchaseOrders,
-  addPurchaseorder,
+  getPurchaseOrders
 } from "../../services/purchaseOrderService";
 import { toast } from "react-toastify";
 import moment from "moment";
@@ -31,14 +21,8 @@ import {
   Dropdown,
 } from "@themesberg/react-bootstrap";
 
-import Profile3 from "../../assets/img/team/profile-picture-3.jpg";
 import SpinDiv from "../components/SpinDiv";
-import axios from "axios";
-import settings from "../../services/settings";
-import { authHeader } from "../../services/authHeader";
-import { authService } from "../../services/authService";
 import AddAttribute from "./AddAttribute";
-import { addAttributes } from "../../services/attributeService";
 import Resizer from "react-image-file-resizer";
 import { addPImage } from "../../services/imageService";
 
@@ -74,6 +58,11 @@ export class SingleProduct extends Component {
     this.getProduct();
     this.getPurchaseOrders();
   }
+
+  // Add back navigation handler
+  handleGoBack = () => {
+    this.props.history.goBack();
+  };
 
   fileChangedHandler(event) {
     var fileInput = false;
@@ -399,76 +388,21 @@ export class SingleProduct extends Component {
         <div className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
           <div className="d-flex">
             <ButtonGroup>
-              {/* <Button variant="outline-primary" size="sm">
-                Export
-              </Button> */}
+              <Button 
+                variant="outline-secondary" 
+                size="sm"
+                onClick={this.handleGoBack}
+                className="me-2"
+              >
+                <i className="fas fa-arrow-left me-1"></i>
+                Back
+              </Button>
             </ButtonGroup>
           </div>
         </div>
 
         <Row>
-          {/* <Col xs={12}>
-            <Card.Body className="bg-white shadow-sm mb-4">
-              <Row>
-                <Col md={6}>
-                  <ButtonGroup>
-                    <Button
-                      variant="outline-primary"
-                      size="sm"
-                      onClick={() => {
-                        this.props.history.push("/purchase_orders");
-                      }}
-                    >
-                      create purchased order
-                    </Button>
-                  </ButtonGroup>
-                </Col>
-              </Row>
-              <Table
-                responsive
-                className="table-centered table-nowrap rounded mb-0"
-              >
-                <thead className="thead-light">
-                  <tr>
-                    <th className="border-0">Product</th>
-                    <th className="border-0">Purchase Order unit</th>
-                    <th className="border-0">Instock</th>
-                    <th className="border-0">Unit Cost Price</th>
-                    <th className="border-0">Date</th>
-
-                    {attributes.length < 1 ? (
-                      <th className="border-0">Variants</th>
-                    ) : (
-                      attributes.map((attribute, key) => {
-                        return <th className="border-0">{attribute.name}</th>;
-                      })
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {purchase_orders.map((purchase_order, key) => {
-                    return (
-                      <tr>
-                        <td>{purchase_order.product_name}</td>
-                        <td>{purchase_order.stock_quantity}</td>
-                        <td>{purchase_order.in_stock}</td>
-                        <td>{purchase_order.unit_price}</td>
-                        <td>
-                          {moment(purchase_order.created_at).format(
-                            "MMM DD YYYY"
-                          )}
-                        </td>
-                        {this.attributeCols(
-                          JSON.parse(purchase_order.product_attributes),
-                          JSON.parse(purchase_order.product_attributes_keys)
-                        )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </Table>
-            </Card.Body>
-          </Col> */}
+         
           <Col xs={12} xl={7}>
             <Card border="light" className="bg-white shadow-sm mb-4">
               {loading && <SpinDiv text={"Loading..."} />}
@@ -479,13 +413,7 @@ export class SingleProduct extends Component {
                   <Col className="text-right" md={12}>
                     {product && (
                       <ButtonGroup>
-                        {/* <Button
-                       variant="outline-primary"
-                       size="sm"
-                       onClick={() => this.toggleAddAttribute()}
-                     >
-                       Add Product Variant
-                     </Button> */}
+                      
                         <Button
                           variant={editProduct ? "secondary" : "primary"}
                           onClick={this.toggleEditProduct}
@@ -515,26 +443,7 @@ export class SingleProduct extends Component {
                         />
                       </Form.Group>
                     </Col>
-                    {/* <Col md={6} className="mb-3">
-                      <Form.Group id="lastName">
-                        <Form.Label>Brand</Form.Label>
-                        <Form.Select
-                          id="state"
-                          required
-                          value={product.brand_id}
-                          onChange={async (e) => {
-                            await this.onChange(e.target.value, "brand_id");
-                          }}
-                        >
-                          <option value="">Select Brand</option>
-                          {brands.map((p, index) => (
-                            <option value={p.id} key={p}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </Form.Select>
-                      </Form.Group>
-                    </Col> */}
+                    
                   </Row>
                   <Col md={6} className="mb-3">
                     <Form.Group id="phone">
@@ -584,36 +493,7 @@ export class SingleProduct extends Component {
                     </div>
                   )}
                 </Form>
-                {/* <h5 className="mb-4">Product Variants</h5>
-
-                <Table
-                  responsive
-                  className="table-centered table-nowrap rounded mb-0"
-                >
-                  <thead className="thead-light">
-                    <tr>
-                      <th className="border-0">Variants</th>
-                      <th className="border-0">Options</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {attributes &&
-                      attributes.map((p, key) => {
-                        return (
-                          <tr>
-                            <td>{p.name}</td>
-                            <td>
-                              {p.attributevalues.length !== 0
-                                ? p.attributevalues.map((p, key) => {
-                                    return p.attribute_value + ",";
-                                  })
-                                : "No options yet"}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </Table> */}
+                
               </Card.Body>
             </Card>
             <Row></Row>

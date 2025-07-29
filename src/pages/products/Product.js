@@ -2,7 +2,6 @@ import React, { Component } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   CardHeader,
-
   //UncontrolledTooltip,
   Media,
   Input,
@@ -42,62 +41,100 @@ import { throttle, debounce } from "../debounce"
 
 export class Product extends Component {
   constructor(props) {
-     
     super(props);
+    
+    // Get saved state from sessionStorage or use defaults
+    const savedState = this.getSavedState();
+    
     this.state = {
-      search: "",
-      page: 1,
-      rows: 10,
+      search: savedState.search || "",
+      page: savedState.page || 1,
+      rows: savedState.rows || 10,
+      category: savedState.category || '',
       loading: false,
       products: [],
       total: 0,
-      total_cart:0,
-      cartItem:[],
-      categories:[],
-      // brands:[],
-      //brand:'',
-      cat:'',
-      br:'',
-      category:'',
-
+      total_cart: 0,
+      cartItem: [],
+      categories: [],
+      cat: '',
+      br: '',
+      showFilter: savedState.showFilter || false,
     };
+    
     this.cartItem = JSON.parse(localStorage.getItem("cart"));
     this.setState({ cartItem: this.cartItem });
     this.searchDebounced = debounce(this.searchProducts, 500);
     this.searchThrottled = throttle(this.searchProducts, 500);
   }
 
+  // Method to get saved state from sessionStorage
+  getSavedState = () => {
+    try {
+      const savedState = sessionStorage.getItem('productPageState');
+      return savedState ? JSON.parse(savedState) : {};
+    } catch (error) {
+      console.error('Error parsing saved state:', error);
+      return {};
+    }
+  };
+
+  // Method to save current state to sessionStorage
+  saveState = () => {
+    const stateToSave = {
+      search: this.state.search,
+      page: this.state.page,
+      rows: this.state.rows,
+      category: this.state.category,
+      showFilter: this.state.showFilter,
+    };
+    
+    try {
+      sessionStorage.setItem('productPageState', JSON.stringify(stateToSave));
+    } catch (error) {
+      console.error('Error saving state:', error);
+    }
+  };
+
   componentDidMount() {
     this.searchProducts();
     this.cartItem = localStorage.removeItem("cart");
   }
 
+  componentDidUpdate(prevProps, prevState) {
+    // Save state whenever relevant state changes
+    if (
+      prevState.search !== this.state.search ||
+      prevState.page !== this.state.page ||
+      prevState.rows !== this.state.rows ||
+      prevState.category !== this.state.category ||
+      prevState.showFilter !== this.state.showFilter
+    ) {
+      this.saveState();
+    }
+  }
+
   handleSearch = event => {
-    this.setState({ search: event.target.value }, () => {
+    this.setState({ search: event.target.value, page: 1 }, () => {
       if(this.state.search < 5){
         this.searchThrottled(this.state.search);
       }else{
         this.searchDebounced(this.state.search);
       }
-    
     });
   };
-  
 
-  onPage = async (page,rows) => {
-    await this.setState({page,rows});
+  onPage = async (page, rows) => {
+    await this.setState({page, rows});
     await this.searchProducts();
   }
 
   getCategories = () => {
-    //this.setState({ loading: true });
     getcategories().then(
-      
       (res) => {
-
         this.setState({
-          categories:res.categories.data,
-          loading:false
+          categories: res.categories.data,
+          loading: false
         });
       },
       (error) => {
@@ -106,44 +143,24 @@ export class Product extends Component {
     );
   };
 
-  // getBrands = () => {
-  //   getbrands().then(
-  //     (res) => {
-  //       console.log(res);
-  //       this.setState({
-  //         brands:res.brands.data,
-  //       });
-  //     },
-  //     (error) => {
-  //       this.setState({ loading: false });
-  //     }
-  //   );
-  // };
-
-  
-
-  
-
   searchProducts = () => {
-    const { page, rows, search, category,cat,br,brand,products } = this.state;
-    this.setState({ loading: false });
-    getProducts({ page, rows,category,brand, search, products }).then(
+    const { page, rows, search, category, cat, br, brand, products } = this.state;
+    this.setState({ loading: true });
+    getProducts({ page, rows, category, brand, search, products }).then(
       (res) => {
-          const newProducts = res.products.data.map(item => ({
-              id: item.id,
-              name:item.name,
-              description: item.description,
-              status:item.status,
-              created_at:item.created_at,
-              updated_at:item.updated_at,
-              brand_name:item.brand_name,
-              category_name:item.category_name,
-          }));
+        const newProducts = res.products.data.map(item => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          status: item.status,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          brand_name: item.brand_name,
+          category_name: item.category_name,
+        }));
           
         this.setState({
           products: newProducts,
-          //categories: res.categories,
-          //brands: res.brands,
           page: res.products.current_page,
           total: res.products.total,
           loading: false,
@@ -155,54 +172,49 @@ export class Product extends Component {
     );
   };
 
-  
   toggleFilter = (e) => {
-    this.setState({ cat: 'hello',showFilter: !this.state.showFilter },() => {
+    this.setState({ cat: 'hello', showFilter: !this.state.showFilter }, () => {
       console.log(this.state.cat)
       this.getCategories();
     });
-   
-  
-
   }
 
   onFilter = async (e, filter) => {
     console.log(e);
-    await this.setState({[filter]: e});
+    await this.setState({[filter]: e, page: 1}); // Reset to page 1 when filtering
     await this.searchProducts();
   }
-
 
   toggleCart = (cartCheckout) => {
     this.setState({ cartCheckout });
   };
 
-  toggleAddProduct=()=>{
-    this.setState({addProduct:!this.state.addProduct});
+  toggleAddProduct = () => {
+    this.setState({addProduct: !this.state.addProduct});
   }
 
-  toggleDeleteProduct=(deleteP)=>{
+  toggleDeleteProduct = (deleteP) => {
     this.setState({deleteP});
   }
 
-  toggleAddCategory=()=>{
-    this.setState({addCategories:!this.state.addCategories});
+  toggleAddCategory = () => {
+    this.setState({addCategories: !this.state.addCategories});
   }
-
-  // toggleAddBrands=()=>{
-  //   this.setState({addBrands:!this.state.addBrands});
-  // }
-  
 
   onChange = (e, state) => {
     this.setState({ [state]: e });
+  };
+
+  // Enhanced navigation method that saves state before navigating
+  navigateToProduct = (productId) => {
+    this.saveState(); // Ensure state is saved before navigation
+    this.props.history.push('/products/' + productId);
   };
 
   render() {
     const { 
       products,
       categories,
-      // brands, 
       brand,
       category,
       total,
@@ -210,21 +222,19 @@ export class Product extends Component {
       addProduct, 
       deleteP,
       addCategories, 
-      // addBrands, 
       page, 
-      
       rows,
       search, 
       loading, 
-      addToCart } = this.state;
+      addToCart 
+    } = this.state;
+    
     return (
       <>
-        
         {addProduct && (
           <AddProduct
             saved={this.searchProducts}
             addProduct={addProduct}
-          
             toggle={() => this.setState({ addProduct: null })}
           />
         )}
@@ -236,6 +246,7 @@ export class Product extends Component {
             toggle={() => this.setState({ deleteP: null })}
           />
         )}
+        
         {addCategories && (
           <AddCategories
             saved={this.searchProducts}
@@ -243,17 +254,10 @@ export class Product extends Component {
             toggle={() => this.setState({ addCategories: null })}
           />
         )}
-        {/* {addBrands && (
-          <AddBrands
-            saved={this.searchProducts}
-            addBrands={addBrands}
-            toggle={() => this.setState({ addBrands: null })}
-          />
-        )} */}
+        
         {loading && <SpinDiv text={"Loading..."} />}
 
         <Row style={{}}>
-
           <Col lg="12">
             <div className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
               <div className="d-block mb-4 mb-md-0">
@@ -269,45 +273,40 @@ export class Product extends Component {
               <div className="btn-toolbar mb-2 mb-md-0">
                 <ButtonGroup>
                   <Button variant="outline-primary" size="sm"  
-                
-                  onClick={() => this.toggleAddProduct()} 
+                    onClick={() => this.toggleAddProduct()} 
                   >
                     Add product
                   </Button>
-                   <Button variant="outline-primary" size="sm"  
-                
-                  onClick={() => this.toggleAddCategory()} 
+                  <Button variant="outline-primary" size="sm"  
+                    onClick={() => this.toggleAddCategory()} 
                   >
                     Create categories
                   </Button>
                   
                   <Button variant="outline-primary" size="sm"  
-                  onClick={() => {this.props.history.push('/purchase_orders')}}
-
+                    onClick={() => {this.props.history.push('/purchase_orders')}}
                   >
                     Purchase Order
                   </Button>
 
-                   <Button variant="outline-primary" size="sm"  
-                  onClick={() => {this.props.history.push('/stocked')}}
-
+                  <Button variant="outline-primary" size="sm"  
+                    onClick={() => {this.props.history.push('/stocked')}}
                   >
                     Stocks
                   </Button>
-                  
-                 
                 </ButtonGroup>
               </div>
             </div>
           </Col>
         </Row>
+        
         <Row>
           <Col lg="6">
             <h6>Products({total})</h6>
           </Col>
           <Col lg="2">
             {!showFilter && (
-              <div style={{ display: "flex", marginTop:10 }}>
+              <div style={{ display: "flex", marginTop: 10 }}>
                 <Button
                   variant="outline-primary"
                   id='filter'
@@ -329,32 +328,23 @@ export class Product extends Component {
                 value={search}
                 style={{ maxHeight: 45, marginRight: 5, marginBottom: 10 }}
                 onChange={this.handleSearch}
-                
               />
-              {/* <Button
-                className="btn-icon btn-2"
-                color="secondary"
-                style={{ maxHeight: 45 }}
-                size="sm"
-                onClick={this.getProducts}
-              >
-                <i className="fa fa-search" />
-              </Button> */}
             </div>
           </Col>
         </Row>
+        
         <Row>
           {showFilter && (
-              <Row>
-                <Col md={3} style={{fontWeight:"bold"}}>
-                  <Form.Group>
-                    <Form.Label>Filter By Category</Form.Label>
-                    <Form.Select
-                      value={category}
-                      type="select"
-                      style={{ marginRight: 10, width: "fit-content" }}
-                      onChange={(e) => this.onFilter(e.target.value, "category")}
-                    >
+            <Row>
+              <Col md={3} style={{fontWeight:"bold"}}>
+                <Form.Group>
+                  <Form.Label>Filter By Category</Form.Label>
+                  <Form.Select
+                    value={category}
+                    type="select"
+                    style={{ marginRight: 10, width: "fit-content" }}
+                    onChange={(e) => this.onFilter(e.target.value, "category")}
+                  >
                     <option value="">Select category</option>
                     {categories.map((p, index) => (
                       <option value={p.id} key={p}>
@@ -363,24 +353,21 @@ export class Product extends Component {
                     ))}
                   </Form.Select>
                 </Form.Group>
-            
-
-                </Col>
-                
-                <Col md={2} style={{marginTop:10}}>
-                  <Button
-                      color="warning"
-                      onClick={this.toggleFilter}
-                      size="sm"
-                      style={{ marginRight: 10 }}
-                  >
+              </Col>
+              
+              <Col md={2} style={{marginTop:10}}>
+                <Button
+                  color="warning"
+                  onClick={this.toggleFilter}
+                  size="sm"
+                  style={{ marginRight: 10 }}
+                >
                   Hide Filters
                 </Button>
-                </Col>
-              </Row>
+              </Col>
+            </Row>
           )}
         </Row>
-        
 
         <Card border="light" className="shadow-sm mb-4">
           <Card.Body className="pb-0">
@@ -390,52 +377,43 @@ export class Product extends Component {
             >
               <thead className="thead-light">
                 <tr>
-                  
-                <th className="border-0">S/N</th>
+                  <th className="border-0">S/N</th>
                   <th className="border-0">Product</th>
                   <th className="border-0">category</th>
-                  {/* <th className="border-0">Brand</th> */}
                 </tr>
               </thead>
               <tbody>
-                
                 {products.map((product, key) => {
-                 
                   return (
                     <tr key={key} style={{fontWeight:"bold",textTransform:"capitalize"}}>
                       <td>{key+1}</td>
                       <td>{product.name}</td>                
-                      <td key={key} className="hover-list" to="/" onClick={() => {//console.log('111')
-                          this.props.history.push('/products/'+product.id)
+                      <td key={key} className="hover-list" to="/" onClick={() => {
+                          this.navigateToProduct(product.id);
                         }}>{product.category_name}</td>
-                      {/* <td>{product.brand_name}</td>
-                    
-                      */}
                       <td>
                         <ButtonGroup>
-                        <Button
-                          variant="outline-primary"
-                          onClick={() => {//console.log('111')
-                            this.props.history.push('/products/'+product.id)
-                          }}
-                          size="sm"
-                        >
-                          View
-                        </Button>
-                        <Button
-                          variant="outline-danger"
-                          onClick={() => {//console.log('111')
-                            this.toggleDeleteProduct(product)
-                          }}            
-                          size="sm"
-                        >
-                          Delete
-                        </Button>
+                          <Button
+                            variant="outline-primary"
+                            onClick={() => {
+                              this.navigateToProduct(product.id);
+                            }}
+                            size="sm"
+                          >
+                            View
+                          </Button>
+                          <Button
+                            variant="outline-danger"
+                            onClick={() => {
+                              this.toggleDeleteProduct(product)
+                            }}            
+                            size="sm"
+                          >
+                            Delete
+                          </Button>
                         </ButtonGroup>
                       </td>
-                      <td>
-                      
-                      </td>
+                      <td></td>
                     </tr>
                   );
                 })}
@@ -443,20 +421,23 @@ export class Product extends Component {
             </Table>
             <Row>
               <Col md={12} style={{fontWeight:"bold",paddingTop:3}}>
-              {products.length<1&&
-                <div style={{color: '#ccc', alignSelf: 'center', padding: 10, fontSize: 13}}>
-                  <i className="fa fa-ban" style={{marginRight: 5}}/>
-                  No Products
-                </div>}
-              {products.length > 0 && <Pagination
-                  showSizeChanger
-                  defaultCurrent={6}
-                  total={total}
-                  showTotal={total => `Total ${total} products`}
-                  onChange={this.onPage}
-                  pageSize={rows}
-                  current={page}
-                />}
+                {products.length < 1 &&
+                  <div style={{color: '#ccc', alignSelf: 'center', padding: 10, fontSize: 13}}>
+                    <i className="fa fa-ban" style={{marginRight: 5}}/>
+                    No Products
+                  </div>
+                }
+                {products.length > 0 && 
+                  <Pagination
+                    showSizeChanger
+                    defaultCurrent={6}
+                    total={total}
+                    showTotal={total => `Total ${total} products`}
+                    onChange={this.onPage}
+                    pageSize={rows}
+                    current={page}
+                  />
+                }
               </Col>
             </Row>
           </Card.Body>
