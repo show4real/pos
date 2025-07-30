@@ -25,6 +25,7 @@ import moment from "moment";
 import { InputNumber, Pagination, Select, Spin } from "antd";
 import { getCompany } from "../../services/companyService";
 import { getClients } from "../../services/clientService";
+import TransactionPrintComponent from "./TransactionPrintComponent";
 
 const { Option } = Select;
 
@@ -57,6 +58,7 @@ export class PosOrderIndex extends Component {
       serials2: [],
       payment_mode: "",
       amount_paid: 0,
+      delivery_fee:0,
       client_id: "",
       selectedClient: { value: "", label: "" },
       total_purchase: 0,
@@ -82,7 +84,7 @@ export class PosOrderIndex extends Component {
     this.getClients();
     this.getCompany();
 
-     window.addEventListener("keydown", this.handleKeyPress);
+    window.addEventListener("keydown", this.handleKeyPress);
   }
 
   componentWillUnmount() {
@@ -246,6 +248,7 @@ export class PosOrderIndex extends Component {
       client_id,
       due_date,
       amount_paid,
+      delivery_fee,
       invoice_id,
     } = this.state;
     editSales({
@@ -253,6 +256,7 @@ export class PosOrderIndex extends Component {
       payment_mode: payment_mode,
       tracking_id: cartItem.tracking_id,
       amount_paid: amount_paid,
+      delivery_fee:delivery_fee,
       client_id: client_id,
       due_date: due_date,
       total_purchase: total_purchase,
@@ -285,7 +289,7 @@ export class PosOrderIndex extends Component {
   };
 
   totalCartP() {
-    const { cartItem, company } = this.state;
+    const { cartItem, company, delivery_fee } = this.state;
     let sum = 0;
     for (let i = 0; i < cartItem.length; i += 1) {
       sum +=
@@ -294,7 +298,7 @@ export class PosOrderIndex extends Component {
           : 0 * cartItem[i].order.unit_selling_price;
     }
     console.log(cartItem);
-    return this.formatCurrency(sum);
+    return this.formatCurrency(sum + delivery_fee);
   }
 
   clearCart() {
@@ -329,6 +333,7 @@ export class PosOrderIndex extends Component {
           stocks: res.stocks.data,
           cartItem: res.sold_stocks,
           amount_paid: res.prev_invoice.amount_paid,
+          delivery_fee: res.prev_invoice.delivery_fee,
           payment_mode: res.prev_invoice.payment_mode,
           client_id: res.prev_invoice.client_id,
           selectedClient: {
@@ -426,6 +431,49 @@ export class PosOrderIndex extends Component {
     this.setState({ cartItem: updatedCartItems });
   };
 
+  handlePrint = () => {
+    const printContent = document.querySelector('.print-container');
+    const originalContent = document.body.innerHTML;
+
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Transaction Receipt</title>
+          <style>
+            @media print {
+              body { margin: 0; }
+              .print-content { display: block !important; }
+            }
+            @page {
+              size: A4;
+              margin: 0;
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent.innerHTML}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+
+    // Wait for content to load then print
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
+  formatNumber = (number) => {
+    if (number) {
+      return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+  };
+
   render() {
     const {
       stocks,
@@ -448,8 +496,21 @@ export class PosOrderIndex extends Component {
       loading,
       selectedClient,
       amount_paid,
+      delivery_fee,
       prev_balance,
     } = this.state;
+    var p_mode = pos_items.map(function (p) {
+      return p.payment_mode;
+    });
+    var transaction_date_time = pos_items.map(function (p) {
+      return p.created_at;
+    });
+    var cashier_name = pos_items.map(function (p) {
+      return p.cashier_name;
+    });
+    const transaction_total = pos_items
+      .map((p) => p.selling_price * p.qty_sold)
+      .reduce((prev, curr) => prev + curr, 0);
     return (
       <>
         {sales && (
@@ -461,8 +522,24 @@ export class PosOrderIndex extends Component {
               total_balance={total_balance}
               prev_balance={prev_balance}
               user={user}
+              delivery_fee={delivery_fee}
               ref={(el) => (this.componentRef = el)}
               toggle={() => this.setState({ invoice: {} })}
+            />
+            <TransactionPrintComponent
+              transaction_detail={pos_items}
+              company={company}
+              invoice_data={invoice}
+              transaction_id={invoice.transaction_id}
+              transaction_date_time={transaction_date_time[0]}
+              payment_mode={p_mode[0]}
+              cashier_name={cashier_name[0]}
+              transaction_total={transaction_total + delivery_fee}
+              balance={invoice.balance}
+              prev_balance={prev_balance}
+              total_balance={total_balance}
+              delivery_fee = {delivery_fee}
+              formatNumber={this.formatNumber}
             />
           </div>
         )}
@@ -509,49 +586,49 @@ export class PosOrderIndex extends Component {
                 <Col md={8}>
                   <Row>
                     <Col md="6">
-                      
+
 
                       <div style={{ maxWidth: "500px", marginBottom: "10px" }}>
-                      <div style={{ display: "flex", alignItems: "center" }}>
-                        <input
-                          ref={this.inputRef}
-                          id="show"
-                          value={search}
-                          onChange={this.handleSearch}
-                          autoFocus
-                          placeholder="Search for products using barcode scanner or type manually..."
-                          style={{
-                            flex: 1,
-                            height: "55px",
-                            padding: "0 12px",
-                            fontSize: "16px",
-                            border: "1px solid #ccc",
-                            borderTopLeftRadius: "5px",
-                            borderBottomLeftRadius: "5px",
-                            borderRight: search ? "none" : "1px solid #ccc",
-                            outline: "none",
-                          }}
-                        />
-                        {search && (
-                          <button
-                            onClick={this.clearSearch}
+                        <div style={{ display: "flex", alignItems: "center" }}>
+                          <input
+                            ref={this.inputRef}
+                            id="show"
+                            value={search}
+                            onChange={this.handleSearch}
+                            autoFocus
+                            placeholder="Search for products using barcode scanner or type manually..."
                             style={{
+                              flex: 1,
                               height: "55px",
-                              width: "50px",
-                              fontSize: "24px",
-                              backgroundColor: "#f8f9fa",
+                              padding: "0 12px",
+                              fontSize: "16px",
                               border: "1px solid #ccc",
-                              borderLeft: "none",
-                              borderTopRightRadius: "5px",
-                              borderBottomRightRadius: "5px",
-                              cursor: "pointer",
+                              borderTopLeftRadius: "5px",
+                              borderBottomLeftRadius: "5px",
+                              borderRight: search ? "none" : "1px solid #ccc",
+                              outline: "none",
                             }}
-                          >
-                            &times;
-                          </button>
-                        )}
+                          />
+                          {search && (
+                            <button
+                              onClick={this.clearSearch}
+                              style={{
+                                height: "55px",
+                                width: "50px",
+                                fontSize: "24px",
+                                backgroundColor: "#f8f9fa",
+                                border: "1px solid #ccc",
+                                borderLeft: "none",
+                                borderTopRightRadius: "5px",
+                                borderBottomRightRadius: "5px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              &times;
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
                     </Col>
                   </Row>
                 </Col>
@@ -575,19 +652,31 @@ export class PosOrderIndex extends Component {
                       </>
                     )}
                     {sales.length > 0 && (
-                      <ReactToPrint
-                        trigger={() => (
-                          <Button
-                            variant="outline-success"
-                            size="sm"
-                            className="d-flex align-items-center gap-2"
-                          >
-                            <i className="fa fa-print" />
-                            Print Invoice
-                          </Button>
-                        )}
-                        content={() => this.componentRef}
-                      />
+                      <>
+                        <ReactToPrint
+                          trigger={() => (
+                            <Button
+                              variant="outline-success"
+                              size="sm"
+                              className="d-flex align-items-center gap-2"
+                            >
+                              <i className="fa fa-print" />
+                              Print Invoice
+                            </Button>
+                          )}
+                          content={() => this.componentRef}
+                        />
+
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+
+                          onClick={this.handlePrint}
+                        >
+                          <i className="fas fa-print me-2"></i>
+                          Print A4 Receipt
+                        </Button>
+                      </>
                     )}
                   </div>
                 </Col>
@@ -824,7 +913,7 @@ export class PosOrderIndex extends Component {
                                 </Row>
 
                                 <Row>
-                                  <Col md={12}>
+                                  <Col md={6}>
                                     <Form.Group>
                                       <Form.Label className="fw-semibold">Payment Method</Form.Label>
                                       <Form.Select
@@ -841,6 +930,28 @@ export class PosOrderIndex extends Component {
                                       </Form.Select>
                                     </Form.Group>
                                   </Col>
+                                  {cartItem.length > 0 && <Col md={6} className="mb-3">
+                                      <Form.Group>
+                                        <Form.Label className="fw-semibold">Delivery Fee</Form.Label>
+                                        <InputNumber
+                                          style={{
+                                            width: "100%",
+                                            height: 40,
+                                            fontSize: 16,
+                                          }}
+                                          formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                                          parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+                                          onKeyPress={(event) => {
+                                            if (!/[0-9]/.test(event.key)) {
+                                              event.preventDefault();
+                                            }
+                                          }}
+                                          value={delivery_fee}
+                                          onChange={(e) => this.onChange(e, "delivery_fee")}
+                                          placeholder="Enter Delivery Fee"
+                                        />
+                                      </Form.Group>
+                                    </Col>}
                                 </Row>
                               </Card.Body>
                             </Card>
@@ -850,6 +961,7 @@ export class PosOrderIndex extends Component {
                               <Card className="border">
                                 <Card.Body>
                                   <Row className="align-items-end">
+                                    
                                     <Col md={6} className="mb-3">
                                       <Form.Group>
                                         <Form.Label className="fw-semibold">Amount Received</Form.Label>

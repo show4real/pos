@@ -272,7 +272,7 @@ export class Invoice extends React.Component {
   };
 
   render() {
-    const { invoice, company, items, pos_items, total_balance, prev_balance } =
+    const { invoice, company, items, pos_items, total_balance, prev_balance, delivery_fee } =
       this.props;
     const combinedItems = this.combineItems(pos_items);
 
@@ -447,6 +447,12 @@ export class Invoice extends React.Component {
             </table>
 
             {/* Totals Section */}
+            <div style={thermalStyles.totalLine}>
+                <span style={thermalStyles.totalLabel}>Delivery Fee:</span>
+                <span style={thermalStyles.totalAmount}>
+                  {invoice.currency}{this.formatCurrency2(delivery_fee)}
+                </span>
+              </div>
             <div style={thermalStyles.totalsSection}>
               <div style={thermalStyles.totalLine}>
                 <span style={thermalStyles.totalLabel}>Subtotal:</span>

@@ -7,6 +7,7 @@ import {
 import SpinDiv from "../components/SpinDiv";
 import { getTransactionDetails } from "../../services/posOrderService";
 import moment from "moment";
+import TransactionPrintComponent from "./TransactionPrintComponent";
 
 // Thermal Print Component for 80mm thermal printer
 class ThermalPrintComponent extends Component {
@@ -175,316 +176,6 @@ class ThermalPrintComponent extends Component {
   }
 }
 
-// Print Component for A4 formatting
-class TransactionPrintComponent extends Component {
-  render() {
-    const { 
-      transaction_detail, 
-      company, 
-      invoice_data, 
-      transaction_id,
-      transaction_date_time,
-      payment_mode,
-      cashier_name,
-      transaction_total,
-      balance,
-      prev_balance,
-      total_balance
-    } = this.props;
-
-    return (
-      <div className="print-container" style={{ display: 'none' }}>
-        <div className="print-content" style={{
-          width: '210mm',
-          minHeight: '297mm',
-          padding: '20mm',
-          margin: '0 auto',
-          backgroundColor: 'white',
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '12px',
-          lineHeight: '1.4',
-          color: '#000'
-        }}>
-          {/* Header Section */}
-          <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '2px solid #000', paddingBottom: '20px' }}>
-            {/* Logo */}
-            {company?.logo_url && (
-              <div style={{ marginBottom: '15px' }}>
-                <img 
-                  src={company.logo_url} 
-                  alt="Company Logo" 
-                  style={{ 
-                    maxWidth: '80px', 
-                    maxHeight: '80px', 
-                    objectFit: 'contain' 
-                  }} 
-                />
-              </div>
-            )}
-            
-            <h1 style={{ margin: '0 0 5px 0', fontSize: '24px', fontWeight: 'bold' }}>
-              {company?.name || 'Company Name'}
-            </h1>
-            
-            {company?.invoice_header && (
-              <h2 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: 'normal', fontStyle: 'italic' }}>
-                {company.invoice_header}
-              </h2>
-            )}
-            
-            {company?.address && (
-              <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                <strong>Address:</strong> {company.address}
-              </p>
-            )}
-            
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap' }}>
-              {company?.phone_one && (
-                <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                  <strong>Tel:</strong> {company.phone_one}
-                </p>
-              )}
-              {company?.phone_two && (
-                <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                  <strong>Tel:</strong> {company.phone_two}
-                </p>
-              )}
-            </div>
-            
-            {company?.email && (
-              <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                <strong>Email:</strong> {company.email}
-              </p>
-            )}
-            {company?.website && (
-              <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                <strong>Website:</strong> {company.website}
-              </p>
-            )}
-          </div>
-
-          {/* Transaction Info Section */}
-          <div style={{ marginBottom: '30px' }}>
-            <h2 style={{ margin: '0 0 15px 0', fontSize: '18px', fontWeight: 'bold', textAlign: 'center' }}>
-              TRANSACTION RECEIPT
-            </h2>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <div style={{ width: '48%' }}>
-                <p style={{ margin: '5px 0' }}>
-                  <strong>Transaction ID:</strong> {transaction_id}
-                </p>
-                <p style={{ margin: '5px 0' }}>
-                  <strong>Invoice No:</strong> {invoice_data?.invoice_no || 'N/A'}
-                </p>
-                <p style={{ margin: '5px 0' }}>
-                  <strong>Date:</strong> {moment(transaction_date_time).format("MMM D, YYYY")}
-                </p>
-                <p style={{ margin: '5px 0' }}>
-                  <strong>Time:</strong> {moment(transaction_date_time).format("hh:mm A")}
-                </p>
-              </div>
-              <div style={{ width: '48%' }}>
-                <p style={{ margin: '5px 0' }}>
-                  <strong>Cashier:</strong> {cashier_name}
-                </p>
-                <p style={{ margin: '5px 0' }}>
-                  <strong>Payment Mode:</strong> {payment_mode}
-                </p>
-                <p style={{ margin: '5px 0' }}>
-                  <strong>Client:</strong> {invoice_data?.client_name || 'Walk-in Customer'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Items Table */}
-          <div style={{ marginBottom: '30px' }}>
-            <table style={{ 
-              width: '100%', 
-              borderCollapse: 'collapse', 
-              border: '1px solid #000',
-              fontSize: '11px'
-            }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f0f0f0' }}>
-                  <th style={{ 
-                    border: '1px solid #000', 
-                    padding: '8px', 
-                    textAlign: 'left',
-                    fontWeight: 'bold'
-                  }}>
-                    #
-                  </th>
-                  <th style={{ 
-                    border: '1px solid #000', 
-                    padding: '8px', 
-                    textAlign: 'left',
-                    fontWeight: 'bold'
-                  }}>
-                    Product Name
-                  </th>
-                  <th style={{ 
-                    border: '1px solid #000', 
-                    padding: '8px', 
-                    textAlign: 'center',
-                    fontWeight: 'bold'
-                  }}>
-                    Unit Price
-                  </th>
-                  <th style={{ 
-                    border: '1px solid #000', 
-                    padding: '8px', 
-                    textAlign: 'center',
-                    fontWeight: 'bold'
-                  }}>
-                    Quantity
-                  </th>
-                  <th style={{ 
-                    border: '1px solid #000', 
-                    padding: '8px', 
-                    textAlign: 'center',
-                    fontWeight: 'bold'
-                  }}>
-                    Supplier
-                  </th>
-                  <th style={{ 
-                    border: '1px solid #000', 
-                    padding: '8px', 
-                    textAlign: 'right',
-                    fontWeight: 'bold'
-                  }}>
-                    Total
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {transaction_detail.map((item, index) => (
-                  <tr key={index}>
-                    <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'left' }}>
-                      {index + 1}
-                    </td>
-                    <td style={{ border: '1px solid #000', padding: '8px' }}>
-                      {item.product_name}
-                    </td>
-                    <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
-                      {this.props.formatNumber(item.selling_price)}
-                    </td>
-                    <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
-                      {item.qty_sold}
-                    </td>
-                    <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
-                      {item.supplier_name || 'N/A'}
-                    </td>
-                    <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right' }}>
-                      {this.props.formatNumber(item.qty_sold * item.selling_price)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Total Section */}
-          <div style={{ marginBottom: '20px' }}>
-            {/* Total */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              marginBottom: '10px',
-              borderTop: '1px solid #000',
-              paddingTop: '10px',
-              fontSize: '16px',
-              fontWeight: 'bold'
-            }}>
-              <span><strong>Total:</strong></span>
-              <span><strong>{(company?.currency || '')} {this.props.formatNumber(invoice_data?.total || transaction_total)}</strong></span>
-            </div>
-
-            {/* Amount Paid */}
-            {invoice_data?.amount_paid !== undefined && invoice_data?.amount_paid !== null && (
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                marginBottom: '8px',
-                fontSize: '14px'
-              }}>
-                <span>Paid:</span>
-                <span>{(company?.currency || '')} {this.props.formatNumber(invoice_data.amount_paid)}</span>
-              </div>
-            )}
-
-            {/* Current Balance */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              marginBottom: '8px',
-              fontSize: '12px'
-            }}>
-              <span>Current Balance:</span>
-              <span>{(company?.currency || '')} {this.props.formatNumber(balance !== undefined && balance !== null ? balance : 0)}</span>
-            </div>
-
-            {/* Previous Balance */}
-            {prev_balance !== undefined && prev_balance !== null && (
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                marginBottom: '8px',
-                fontSize: '12px'
-              }}>
-                <span>Previous Balance:</span>
-                <span>{(company?.currency || '')} {this.props.formatNumber(prev_balance)}</span>
-              </div>
-            )}
-
-            {/* Total Balance */}
-            {total_balance !== undefined && total_balance !== null && (
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                marginBottom: '15px',
-                borderTop: '1px solid #000',
-                paddingTop: '10px',
-                fontSize: '16px',
-                fontWeight: 'bold'
-              }}>
-                <span><strong>TOTAL BALANCE:</strong></span>
-                <span><strong>{(company?.currency || '')} {this.props.formatNumber(total_balance)}</strong></span>
-              </div>
-            )}
-          </div>
-
-          {/* Terms and Conditions */}
-          <div style={{ marginBottom: '20px', fontSize: '10px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
-              Terms and Conditions:
-            </h3>
-            <div style={{ textAlign: 'justify', lineHeight: '1.3' }}>
-              {company?.invoice_footer_two || 'Good sold in good condition are not returnable'}
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div style={{ 
-            textAlign: 'center', 
-            marginTop: '40px', 
-            borderTop: '1px solid #000', 
-            paddingTop: '15px',
-            fontSize: '12px'
-          }}>
-            <p style={{ margin: '5px 0', fontWeight: 'bold' }}>
-              {company?.invoice_footer_one || 'Thank you for your business!'}
-            </p>
-            <p style={{ margin: '5px 0', fontSize: '10px' }}>
-              Generated on: {moment().format("MMM D, YYYY hh:mm A")}
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-}
 
 export class TransactionDetail extends Component {
   constructor(props) {
@@ -502,6 +193,7 @@ export class TransactionDetail extends Component {
       balance: 0,
       prev_balance: 0,
       total_balance: 0,
+      delivery_fee: 0
     };
   }
 
@@ -522,6 +214,7 @@ export class TransactionDetail extends Component {
           loading: false,
           transaction_detail: res.transaction_detail,
           invoice_data: res.invoice, // Store invoice data
+          delivery_fee : res.invoice.delivery_fee,
           balance: res.balance,
           prev_balance: res.prev_balance,
           total_balance: res.total_balance,
@@ -649,6 +342,7 @@ export class TransactionDetail extends Component {
       balance,
       prev_balance,
       total_balance,
+      delivery_fee
     } = this.state;
 
     var p_mode = transaction_detail.map(function (p) {
@@ -680,6 +374,7 @@ export class TransactionDetail extends Component {
           prev_balance={this.state.prev_balance}
           total_balance={this.state.total_balance}
           formatNumber={this.formatNumber}
+          delivery_fee ={delivery_fee}
         />
 
         <ThermalPrintComponent
@@ -695,6 +390,7 @@ export class TransactionDetail extends Component {
           prev_balance={this.state.prev_balance}
           total_balance={this.state.total_balance}
           formatNumber={this.formatNumber}
+          delivery_fee ={delivery_fee}
         />
 
         {loading && <SpinDiv text={"Loading..."} />}
@@ -825,6 +521,20 @@ export class TransactionDetail extends Component {
                     <p className="text-muted mb-1 small">Amount Paid</p>
                     <h6 className="mb-0 fw-bold text-success">
                       {company?.currency || ''} {this.formatNumber(invoice_data?.amount_paid || 0)}
+                    </h6>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-lg-3 col-md-6">
+                <div className="info-card h-100 border-success">
+                  <div className="card-body text-center">
+                    <div className="info-icon mb-2">
+                      <i className="fas fa-money-bill-wave text-success fs-4"></i>
+                    </div>
+                    <p className="text-muted mb-1 small">Delivery Fee</p>
+                    <h6 className="mb-0 fw-bold text-success">
+                      {company?.currency || ''} {this.formatNumber(invoice_data?.delivery_fee || 0)}
                     </h6>
                   </div>
                 </div>

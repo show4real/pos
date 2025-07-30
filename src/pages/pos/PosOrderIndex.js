@@ -26,8 +26,11 @@ import AddClient from "../clients/AddClient";
 import moment from "moment";
 import { InputNumber } from "antd";
 import { getClients } from "../../services/clientService";
+import TransactionPrintComponent from "./TransactionPrintComponent";
 
 const { Option } = Select;
+
+
 
 export class PosOrderIndex extends Component {
   constructor(props) {
@@ -52,6 +55,7 @@ export class PosOrderIndex extends Component {
       cartItem: [],
       payment_mode: "",
       amount_paid: 0,
+      delivery_fee:0,
       client_id: "",
       total_purchase: 0,
       user: JSON.parse(localStorage.getItem("user")),
@@ -82,14 +86,14 @@ export class PosOrderIndex extends Component {
 
   }
 
- 
+
   componentWillUnmount() {
     window.removeEventListener("keydown", this.handleKeyPress);
   }
 
   handleKeyPress = (e) => {
     const tag = document.activeElement.tagName;
-    
+
     // If not typing in input or textarea, allow global input
     if (tag !== "INPUT" && tag !== "TEXTAREA") {
       if (this.inputRef.current) {
@@ -225,7 +229,7 @@ export class PosOrderIndex extends Component {
   onSaveSales = async (e) => {
     e.preventDefault();
     await toast.dismiss();
-    const { cartItem, company, payment_mode, amount_paid, client_id } =
+    const { cartItem, company, payment_mode, amount_paid, client_id, delivery_fee } =
       this.state;
 
     let check_quantity =
@@ -264,12 +268,14 @@ export class PosOrderIndex extends Component {
       client_id,
       due_date,
       amount_paid,
+      delivery_fee
     } = this.state;
     addSales({
       cart_items: cartItem,
       payment_mode: payment_mode,
       tracking_id: cartItem.tracking_id,
       amount_paid: amount_paid,
+      delivery_fee: delivery_fee,
       client_id: client_id,
       due_date: due_date,
       invoice_no: invoice_no,
@@ -314,33 +320,24 @@ export class PosOrderIndex extends Component {
   };
 
   totalCartP() {
-    const { cartItem, company } = this.state;
+    const { cartItem, delivery_fee } = this.state;
     let sum = 0;
-    if (company.sell_by_serial_no == 1) {
-      for (let i = 0; i < cartItem.length; i += 1) {
-        sum +=
-          cartItem[i].new_serials !== undefined
-            ? cartItem[i].new_serials.length *
-            cartItem[i].order.unit_selling_price
-            : 0 * cartItem[i].order.unit_selling_price;
-      }
-      return this.formatCurrency(sum);
-    } else {
+    
       for (let i = 0; i < cartItem.length; i += 1) {
         sum +=
           cartItem[i].quantity !== 0
             ? cartItem[i].quantity * cartItem[i].order.unit_selling_price
             : 0 * cartItem[i].order.unit_selling_price;
       }
-      return this.formatCurrency(sum);
-    }
+      return this.formatCurrency(sum + delivery_fee);
+    
   }
 
   clearCart = () => {
     this.setState({ cartItem: [], cart_details: [] }, () => {
       localStorage.removeItem("cartItem");
       localStorage.removeItem("cart_details");
-      
+
     });
   };
 
@@ -410,12 +407,12 @@ export class PosOrderIndex extends Component {
     } else {
       items.push(addToCart);
     }
-    
+
     this.setState({ cartItem: items }, () => {
       this.updateCartItemInLocalStorage();
-      
+
     });
-    
+
     this.setState({ search: "" }, () => {
       if (this.state.search < 5) {
         this.searchThrottled(this.state.search);
@@ -424,7 +421,7 @@ export class PosOrderIndex extends Component {
       }
     });
 
-    
+
   };
 
   inCart = (cartId) => {
@@ -472,7 +469,7 @@ export class PosOrderIndex extends Component {
     });
   };
 
- 
+
 
   handlePriceChange = (event, index) => {
     const newPrice = parseFloat(event.target.value) || 0;
@@ -485,6 +482,50 @@ export class PosOrderIndex extends Component {
       this.updateCartItemInLocalStorage
     );
   };
+
+  handlePrint = () => {
+    const printContent = document.querySelector('.print-container');
+    const originalContent = document.body.innerHTML;
+    
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Transaction Receipt</title>
+          <style>
+            @media print {
+              body { margin: 0; }
+              .print-content { display: block !important; }
+            }
+            @page {
+              size: A4;
+              margin: 0;
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent.innerHTML}
+        </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.focus();
+    
+    // Wait for content to load then print
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
+  formatNumber = (number) => {
+    if (number) {
+      return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+  };
+
 
   render() {
     const {
@@ -507,7 +548,22 @@ export class PosOrderIndex extends Component {
       user,
       saving,
       loading,
+      delivery_fee
     } = this.state;
+
+    var p_mode = pos_items.map(function (p) {
+      return p.payment_mode;
+    });
+    var transaction_date_time = pos_items.map(function (p) {
+      return p.created_at;
+    });
+    var cashier_name = pos_items.map(function (p) {
+      return p.cashier_name;
+    });
+    const transaction_total = pos_items
+      .map((p) => p.selling_price * p.qty_sold)
+      .reduce((prev, curr) => prev + curr, 0);
+
     return (
       <>
         {cart_details && (
@@ -518,12 +574,32 @@ export class PosOrderIndex extends Component {
               company={company}
               total_balance={total_balance}
               prev_balance={prev_balance}
+              delivery_fee ={delivery_fee}
               user={user}
               ref={(el) => (this.componentRef = el)}
               toggle={() => this.setState({ invoice: {} })}
             />
+           
+
+            
           </div>
         )}
+        <TransactionPrintComponent
+          transaction_detail={pos_items}
+          company={company}
+          invoice_data={invoice}
+          transaction_id={invoice.transaction_id}
+          transaction_date_time={transaction_date_time[0]}
+          payment_mode={p_mode[0]}
+          cashier_name={cashier_name[0]}
+          transaction_total={transaction_total + delivery_fee}
+          balance={invoice.balance}
+          prev_balance={prev_balance}
+          total_balance={total_balance}
+          delivery_fee = {delivery_fee}
+          formatNumber={this.formatNumber}
+        />
+         
 
         {addClient && (
           <AddClient
@@ -594,7 +670,7 @@ export class PosOrderIndex extends Component {
                           <i className="fas fa-check-circle fa-sm"></i>
                         </div>
                         <div>
-                          <div className="d-block" style={{fontSize:20}}>Available</div>
+                          <div className="d-block" style={{ fontSize: 20 }}>Available</div>
                           <span className="fw-bold text-success">{total} Items</span>
                         </div>
                       </div>
@@ -644,46 +720,46 @@ export class PosOrderIndex extends Component {
                   </Col> */}
                   <Col md={5}>
                     <div style={{ maxWidth: "500px", marginBottom: "10px" }}>
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <input
-            ref={this.inputRef}
-            id="show"
-            value={search}
-            onChange={this.handleSearch}
-            autoFocus
-            placeholder="Search for products using barcode scanner or type manually..."
-            style={{
-              flex: 1,
-              height: "55px",
-              padding: "0 12px",
-              fontSize: "16px",
-              border: "1px solid #ccc",
-              borderTopLeftRadius: "5px",
-              borderBottomLeftRadius: "5px",
-              borderRight: search ? "none" : "1px solid #ccc",
-              outline: "none",
-            }}
-          />
-          {search && (
-            <button
-              onClick={this.clearSearch}
-              style={{
-                height: "55px",
-                width: "50px",
-                fontSize: "24px",
-                backgroundColor: "#f8f9fa",
-                border: "1px solid #ccc",
-                borderLeft: "none",
-                borderTopRightRadius: "5px",
-                borderBottomRightRadius: "5px",
-                cursor: "pointer",
-              }}
-            >
-              &times;
-            </button>
-          )}
-        </div>
-      </div>
+                      <div style={{ display: "flex", alignItems: "center" }}>
+                        <input
+                          ref={this.inputRef}
+                          id="show"
+                          value={search}
+                          onChange={this.handleSearch}
+                          autoFocus
+                          placeholder="Search for products using barcode scanner or type manually..."
+                          style={{
+                            flex: 1,
+                            height: "55px",
+                            padding: "0 12px",
+                            fontSize: "16px",
+                            border: "1px solid #ccc",
+                            borderTopLeftRadius: "5px",
+                            borderBottomLeftRadius: "5px",
+                            borderRight: search ? "none" : "1px solid #ccc",
+                            outline: "none",
+                          }}
+                        />
+                        {search && (
+                          <button
+                            onClick={this.clearSearch}
+                            style={{
+                              height: "55px",
+                              width: "50px",
+                              fontSize: "24px",
+                              backgroundColor: "#f8f9fa",
+                              border: "1px solid #ccc",
+                              borderLeft: "none",
+                              borderTopRightRadius: "5px",
+                              borderBottomRightRadius: "5px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            &times;
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </Col>
                   <Col md={4} className="text-end pt-2">
                     <div className="btn-toolbar justify-content-end">
@@ -712,6 +788,7 @@ export class PosOrderIndex extends Component {
                         )}
 
                         {cart_details.length > 0 && (
+                          <>
                           <ReactToPrint
                             trigger={() => (
                               <Button variant="outline-success" size="sm">
@@ -720,6 +797,16 @@ export class PosOrderIndex extends Component {
                             )}
                             content={() => this.componentRef}
                           />
+                           <Button
+                            variant="outline-secondary"
+                            size="sm"
+                          
+                            onClick={this.handlePrint}
+                          >
+                            <i className="fas fa-print me-2"></i>
+                            Print A4 Receipt
+                          </Button>
+                          </>
                         )}
                       </ButtonGroup>
                     </div>
@@ -1056,6 +1143,33 @@ export class PosOrderIndex extends Component {
                                   <Form.Group>
                                     <Form.Label className="fw-semibold mb-2">
                                       <i className="fas fa-money-bill-wave me-2"></i>
+                                      Delivery Fee
+                                    </Form.Label>
+                                    <InputNumber
+                                      style={{
+                                        width: "100%",
+                                        height: "45px",
+                                        borderRadius: "8px",
+                                        fontSize: "16px"
+                                      }}
+                                      formatter={(value) =>
+                                        `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                                      }
+                                      parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+                                      onKeyPress={(event) => {
+                                        if (!/[0-9]/.test(event.key)) {
+                                          event.preventDefault();
+                                        }
+                                      }}
+                                      onChange={(e) => this.onChange(e, "delivery_fee")}
+                                      placeholder="Enter Delivery Fee"
+                                    />
+                                  </Form.Group>
+                                </Col>
+                                <Col md={6}>
+                                  <Form.Group>
+                                    <Form.Label className="fw-semibold mb-2">
+                                      <i className="fas fa-money-bill-wave me-2"></i>
                                       Amount Received
                                     </Form.Label>
                                     <InputNumber
@@ -1079,6 +1193,7 @@ export class PosOrderIndex extends Component {
                                     />
                                   </Form.Group>
                                 </Col>
+                                
                               </Row>
                             </div>
 
