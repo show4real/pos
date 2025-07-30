@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Input } from "reactstrap";
 import { getAllBranches, getProducts, getBranches } from "../../services/branchService";
 import { createStock } from "../../services/stockService";
 import { toast } from "react-toastify";
 import { Pagination, Select } from "antd";
-import { 
-  PlusOutlined, 
-  SearchOutlined, 
-  EyeOutlined, 
+import {
+  PlusOutlined,
+  SearchOutlined,
+  EyeOutlined,
   StopOutlined,
   LoadingOutlined
 } from "@ant-design/icons";
@@ -52,6 +52,9 @@ const BranchIndex = ({ history }) => {
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [existingBarcodes, setExistingBarcodes] = useState([]);
 
+  // Add ref for barcode input
+  const barcodeInputRef = useRef(null);
+
   // Destructure state for cleaner code
   const { search, page, rows, loading, branches, total, showCreateModal } = state;
 
@@ -64,16 +67,16 @@ const BranchIndex = ({ history }) => {
   // Fetch products and branches for form dropdowns
   const fetchFormOptions = useCallback(async () => {
     setLoadingOptions(true);
-    
+
     try {
       const [productsResponse, branchesResponse] = await Promise.all([
         getProducts(),
         getAllBranches()
       ]);
-      
+
       setProducts(productsResponse.products || []);
       setAllBranches(branchesResponse.branches || []);
-      
+
       // Extract existing barcodes to prevent duplicates
       const barcodes = [];
       if (productsResponse.products) {
@@ -86,7 +89,7 @@ const BranchIndex = ({ history }) => {
         });
       }
       setExistingBarcodes(barcodes);
-      
+
     } catch (error) {
       showToast("Failed to fetch form options", "error");
     } finally {
@@ -103,13 +106,19 @@ const BranchIndex = ({ history }) => {
   useEffect(() => {
     if (showCreateModal) {
       fetchFormOptions();
+      // Focus barcode input after modal is fully rendered
+      setTimeout(() => {
+        if (barcodeInputRef.current) {
+          barcodeInputRef.current.focus();
+        }
+      }, 300);
     }
   }, [showCreateModal, fetchFormOptions]);
 
   // Fetch branches from API
   const fetchBranches = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true }));
-    
+
     try {
       const response = await getBranches({ page, rows, search });
       setState(prev => ({
@@ -153,7 +162,7 @@ const BranchIndex = ({ history }) => {
   const handleFormChange = useCallback((e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Clear error for this field
     if (formErrors[name]) {
       setFormErrors(prev => ({ ...prev, [name]: "" }));
@@ -164,7 +173,7 @@ const BranchIndex = ({ history }) => {
   const validateForm = useCallback(() => {
     const errors = {};
     const requiredFields = ["product_id", "branch_id", "unit_price", "stock_quantity", "unit_selling_price"];
-    
+
     requiredFields.forEach(field => {
       if (!formData[field]?.toString().trim()) {
         const fieldName = field.replace(/_id$/, '').replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
@@ -195,16 +204,16 @@ const BranchIndex = ({ history }) => {
   // Handle form submission
   const handleCreateStock = useCallback(async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     setState(prev => ({ ...prev, loading: true }));
-    
+
     try {
       await createStock(formData);
-      
+
       showToast("Stock created successfully!");
       setState(prev => ({ ...prev, showCreateModal: false, loading: false }));
       setFormData({
@@ -243,7 +252,7 @@ const BranchIndex = ({ history }) => {
   // Handle dropdown changes for Select components
   const handleSelectChange = useCallback((value, name) => {
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Clear error for this field
     if (formErrors[name]) {
       setFormErrors(prev => ({ ...prev, [name]: "" }));
@@ -258,7 +267,7 @@ const BranchIndex = ({ history }) => {
   return (
     <>
       {loading && <SpinDiv text="Loading..." />}
-      
+
       {/* Header Section */}
       <Row>
         <Col lg="12">
@@ -399,7 +408,7 @@ const BranchIndex = ({ history }) => {
                 <span className="text-muted">Loading options...</span>
               </div>
             )}
-            
+
             <Row className="g-3">
               <Col md="6">
                 <Form.Group>
@@ -430,7 +439,7 @@ const BranchIndex = ({ history }) => {
                   )}
                 </Form.Group>
               </Col>
-              
+
               <Col md="6">
                 <Form.Group>
                   <Form.Label className="fw-bold">
@@ -468,20 +477,43 @@ const BranchIndex = ({ history }) => {
                   <Form.Label className="fw-bold">
                     Barcode
                   </Form.Label>
-                  <Form.Control
+                  <input
+                    ref={barcodeInputRef}
                     type="text"
                     name="barcode"
                     value={formData.barcode}
                     onChange={handleFormChange}
                     placeholder="Scan or enter barcode"
-                    //isInvalid={!!formErrors.barcode}
+                    className={`form-control ${formErrors.barcode ? 'is-invalid' : ''}`}
+                    style={{
+                      padding: '0.375rem 0.75rem',
+                      fontSize: '1rem',
+                      fontWeight: '400',
+                      lineHeight: '1.5',
+                      color: '#212529',
+                      backgroundColor: '#fff',
+                      backgroundImage: 'none',
+                      border: '1px solid #ced4da',
+                      borderRadius: '0.375rem',
+                      transition: 'border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#86b7fe';
+                      e.target.style.boxShadow = '0 0 0 0.25rem rgba(13, 110, 253, 0.25)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#ced4da';
+                      e.target.style.boxShadow = 'none';
+                    }}
                   />
-                  <Form.Control.Feedback type="invalid">
-                    {formErrors.barcode}
-                  </Form.Control.Feedback>
+                  {formErrors.barcode && (
+                    <div className="invalid-feedback d-block">
+                      {formErrors.barcode}
+                    </div>
+                  )}
                 </Form.Group>
               </Col>
-              
+
               <Col md="6">
                 <Form.Group>
                   <Form.Label className="fw-bold">
@@ -524,7 +556,7 @@ const BranchIndex = ({ history }) => {
                   </Form.Control.Feedback>
                 </Form.Group>
               </Col>
-              
+
               <Col md="6">
                 <Form.Group>
                   <Form.Label className="fw-bold">
@@ -547,14 +579,14 @@ const BranchIndex = ({ history }) => {
               </Col>
             </Row>
           </Modal.Body>
-          
+
           <Modal.Footer className="p-3">
             <Button variant="secondary" onClick={handleCloseModal}>
               Cancel
             </Button>
-            <Button 
-              variant="primary" 
-              type="submit" 
+            <Button
+              variant="primary"
+              type="submit"
               disabled={loading || loadingOptions}
             >
               {loading ? (
