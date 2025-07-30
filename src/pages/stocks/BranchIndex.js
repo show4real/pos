@@ -410,7 +410,7 @@ const BranchIndex = ({ history }) => {
             )}
 
             <Row className="g-3">
-              <Col md="6">
+              <Col md="12">
                 <Form.Group>
                   <Form.Label className="fw-bold">
                     Product <span className="text-danger">*</span>
