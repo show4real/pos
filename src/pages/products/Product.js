@@ -172,6 +172,7 @@ export class Product extends Component {
           updated_at: item.updated_at,
           brand_name: item.brand_name,
           category_name: item.category_name,
+          stocks_count: item.stocks_count
         }));
           
         this.setState({
@@ -419,6 +420,7 @@ export class Product extends Component {
                 <tr>
                   <th className="border-0">S/N</th>
                   <th className="border-0">Product</th>
+                  <th className="border-0">Stock Count</th>
                   <th className="border-0">category</th>
                   <th className="border-0">Actions</th>
                 </tr>
@@ -428,7 +430,8 @@ export class Product extends Component {
                   return (
                     <tr key={product.id} style={{fontWeight:"bold",textTransform:"capitalize"}}>
                       <td>{key+1}</td>
-                      <td>{product.name}</td>                
+                      <td>{product.name}</td>
+                      <td>{product.stocks_count}</td>                
                       <td className="hover-list" onClick={() => {
                           this.navigateToProduct(product.id);
                         }}>{product.category_name}</td>
@@ -443,7 +446,7 @@ export class Product extends Component {
                           >
                             View
                           </Button>
-                          <Button
+                          {product.stocks_count == 0 &&   <Button
                             variant="outline-danger"
                             onClick={() => {
                               this.toggleDeleteProduct(product)
@@ -451,7 +454,8 @@ export class Product extends Component {
                             size="sm"
                           >
                             Delete
-                          </Button>
+                          </Button>}
+                        
                         </ButtonGroup>
                       </td>
                     </tr>
