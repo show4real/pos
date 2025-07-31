@@ -20,6 +20,8 @@ export function addProduct(data) {
     };
     return fetch(`${settings.API_URL}product`, requestOptions).then(authService.handleResponse);
 }
+
+
 export function addAttributeOptions(data) {
     const requestOptions = {
         method: 'POST',

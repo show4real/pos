@@ -105,6 +105,17 @@ export function createStock(data) {
   );
 }
 
+export function editStock(data) {
+  const requestOptions = {
+    method: "POST",
+    headers: authHeader(),
+    body: JSON.stringify(data),
+  };
+  return fetch(`${settings.API_URL}edit/stock/${data.id}`, requestOptions).then(
+    authService.handleResponse
+  );
+}
+
 export function deleteStock(id) {
     const requestOptions = {
         method: 'POST',
