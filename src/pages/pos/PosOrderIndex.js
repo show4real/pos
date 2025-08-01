@@ -30,8 +30,6 @@ import TransactionPrintComponent from "./TransactionPrintComponent";
 
 const { Option } = Select;
 
-
-
 export class PosOrderIndex extends Component {
   constructor(props) {
     super(props);
@@ -55,7 +53,9 @@ export class PosOrderIndex extends Component {
       cartItem: [],
       payment_mode: "",
       amount_paid: 0,
-      delivery_fee:0,
+      delivery_fee: 0,
+      discount_percent: 0,
+      discount: 0,
       client_id: "",
       total_purchase: 0,
       user: JSON.parse(localStorage.getItem("user")),
@@ -83,9 +83,7 @@ export class PosOrderIndex extends Component {
     this.setState({ cartItem: savedCartItem });
 
     window.addEventListener("keydown", this.handleKeyPress);
-
   }
-
 
   componentWillUnmount() {
     window.removeEventListener("keydown", this.handleKeyPress);
@@ -157,8 +155,6 @@ export class PosOrderIndex extends Component {
   };
 
   getInvoiceId = () => {
-    //this.setState({loading:true})
-
     getInvoiceId().then(
       (res) => {
         this.setState({
@@ -194,7 +190,27 @@ export class PosOrderIndex extends Component {
   };
 
   onChange = (e, state) => {
-    this.setState({ [state]: e });
+    this.setState({ [state]: e }, () => {
+      // Recalculate discount when discount_percent changes
+      if (state === 'discount_percent') {
+        this.calculateDiscount();
+      }
+    });
+  };
+
+  // New method to calculate discount
+  calculateDiscount = () => {
+    const { cartItem, discount_percent } = this.state;
+    let subtotal = 0;
+    
+    for (let i = 0; i < cartItem.length; i += 1) {
+      subtotal += cartItem[i].quantity !== 0
+        ? cartItem[i].quantity * cartItem[i].order.unit_selling_price
+        : 0;
+    }
+    
+    const calculatedDiscount = (subtotal * discount_percent) / 100;
+    this.setState({ discount: calculatedDiscount });
   };
 
   incrementCount(item, index) {
@@ -209,7 +225,10 @@ export class PosOrderIndex extends Component {
     }
     items.splice(index, 1, item);
 
-    this.setState({ cartItem: items }, this.updateCartItemInLocalStorage);
+    this.setState({ cartItem: items }, () => {
+      this.updateCartItemInLocalStorage();
+      this.calculateDiscount(); // Recalculate discount when cart changes
+    });
   }
 
   decrementCount(item, index) {
@@ -219,7 +238,10 @@ export class PosOrderIndex extends Component {
       item.quantity -= 1;
     }
     items.splice(index, 1, item);
-    this.setState({ cartItem: items }, this.updateCartItemInLocalStorage);
+    this.setState({ cartItem: items }, () => {
+      this.updateCartItemInLocalStorage();
+      this.calculateDiscount(); // Recalculate discount when cart changes
+    });
   }
 
   showToastError = (msg) => {
@@ -254,7 +276,10 @@ export class PosOrderIndex extends Component {
     const list = this.state.cartItem;
 
     list.splice(index, 1);
-    this.setState({ cartItem: list }, this.updateCartItemInLocalStorage);
+    this.setState({ cartItem: list }, () => {
+      this.updateCartItemInLocalStorage();
+      this.calculateDiscount(); // Recalculate discount when item is removed
+    });
   }
 
   saveSales = () => {
@@ -268,14 +293,19 @@ export class PosOrderIndex extends Component {
       client_id,
       due_date,
       amount_paid,
-      delivery_fee
+      delivery_fee,
+      discount,
+      discount_percent
     } = this.state;
+    
     addSales({
       cart_items: cartItem,
       payment_mode: payment_mode,
       tracking_id: cartItem.tracking_id,
       amount_paid: amount_paid,
       delivery_fee: delivery_fee,
+      discount: discount,
+      discount_percent: discount_percent,
       client_id: client_id,
       due_date: due_date,
       invoice_no: invoice_no,
@@ -319,25 +349,47 @@ export class PosOrderIndex extends Component {
     return text;
   };
 
+  // Updated totalCartP method to include discount calculation
   totalCartP() {
-    const { cartItem, delivery_fee } = this.state;
+    const { cartItem, delivery_fee, discount } = this.state;
     let sum = 0;
     
-      for (let i = 0; i < cartItem.length; i += 1) {
-        sum +=
-          cartItem[i].quantity !== 0
-            ? cartItem[i].quantity * cartItem[i].order.unit_selling_price
-            : 0 * cartItem[i].order.unit_selling_price;
-      }
-      return this.formatCurrency(sum + delivery_fee);
+    for (let i = 0; i < cartItem.length; i += 1) {
+      sum +=
+        cartItem[i].quantity !== 0
+          ? cartItem[i].quantity * cartItem[i].order.unit_selling_price
+          : 0 * cartItem[i].order.unit_selling_price;
+    }
     
+    const finalTotal = sum + delivery_fee - discount;
+    return this.formatCurrency(finalTotal);
+  }
+
+  // Method to get subtotal (before delivery fee and discount)
+  getSubtotal() {
+    const { cartItem } = this.state;
+    let sum = 0;
+    
+    for (let i = 0; i < cartItem.length; i += 1) {
+      sum +=
+        cartItem[i].quantity !== 0
+          ? cartItem[i].quantity * cartItem[i].order.unit_selling_price
+          : 0 * cartItem[i].order.unit_selling_price;
+    }
+    
+    return sum;
   }
 
   clearCart = () => {
-    this.setState({ cartItem: [], cart_details: [] }, () => {
+    this.setState({ 
+      cartItem: [], 
+      cart_details: [],
+      discount: 0,
+      discount_percent: 0,
+      delivery_fee:0
+    }, () => {
       localStorage.removeItem("cartItem");
       localStorage.removeItem("cart_details");
-
     });
   };
 
@@ -360,6 +412,7 @@ export class PosOrderIndex extends Component {
     await this.setState({ page, rows });
     await this.getPurchaseOrders();
   };
+  
   getPurchaseOrders = () => {
     const { page, rows, order, search } = this.state;
     this.setState({ loading: true });
@@ -386,6 +439,7 @@ export class PosOrderIndex extends Component {
   toggleFilter = () => {
     this.setState({ showFilter: !this.state.showFilter });
   };
+  
   sleep = (ms) =>
     new Promise((resolve) => {
       setTimeout(() => {
@@ -410,7 +464,7 @@ export class PosOrderIndex extends Component {
 
     this.setState({ cartItem: items }, () => {
       this.updateCartItemInLocalStorage();
-
+      this.calculateDiscount(); // Recalculate discount when item is added
     });
 
     this.setState({ search: "" }, () => {
@@ -420,8 +474,6 @@ export class PosOrderIndex extends Component {
         this.searchDebounced(this.state.search);
       }
     });
-
-
   };
 
   inCart = (cartId) => {
@@ -469,8 +521,6 @@ export class PosOrderIndex extends Component {
     });
   };
 
-
-
   handlePriceChange = (event, index) => {
     const newPrice = parseFloat(event.target.value) || 0;
     const updatedCartItems = [...this.state.cartItem];
@@ -479,7 +529,10 @@ export class PosOrderIndex extends Component {
 
     this.setState(
       { cartItem: updatedCartItems },
-      this.updateCartItemInLocalStorage
+      () => {
+        this.updateCartItemInLocalStorage();
+        this.calculateDiscount(); // Recalculate discount when price changes
+      }
     );
   };
 
@@ -526,7 +579,6 @@ export class PosOrderIndex extends Component {
     }
   };
 
-
   render() {
     const {
       stocks,
@@ -548,7 +600,9 @@ export class PosOrderIndex extends Component {
       user,
       saving,
       loading,
-      delivery_fee
+      delivery_fee,
+      discount,
+      discount_percent
     } = this.state;
 
     var p_mode = pos_items.map(function (p) {
@@ -564,6 +618,8 @@ export class PosOrderIndex extends Component {
       .map((p) => p.selling_price * p.qty_sold)
       .reduce((prev, curr) => prev + curr, 0);
 
+    const subtotal = this.getSubtotal();
+
     return (
       <>
         {cart_details && (
@@ -574,16 +630,16 @@ export class PosOrderIndex extends Component {
               company={company}
               total_balance={total_balance}
               prev_balance={prev_balance}
-              delivery_fee ={delivery_fee}
+              delivery_fee={delivery_fee}
+              discount={discount}
+              discount_percent={discount_percent}
               user={user}
               ref={(el) => (this.componentRef = el)}
               toggle={() => this.setState({ invoice: {} })}
             />
-           
-
-            
           </div>
         )}
+        
         <TransactionPrintComponent
           transaction_detail={pos_items}
           company={company}
@@ -592,14 +648,15 @@ export class PosOrderIndex extends Component {
           transaction_date_time={transaction_date_time[0]}
           payment_mode={p_mode[0]}
           cashier_name={cashier_name[0]}
-          transaction_total={transaction_total + delivery_fee}
+          transaction_total={transaction_total + delivery_fee - discount}
           balance={invoice.balance}
           prev_balance={prev_balance}
           total_balance={total_balance}
-          delivery_fee = {delivery_fee}
+          delivery_fee={delivery_fee}
+          discount={discount}
+          discount_percent={discount_percent}
           formatNumber={this.formatNumber}
         />
-         
 
         {addClient && (
           <AddClient
@@ -636,30 +693,10 @@ export class PosOrderIndex extends Component {
                     <i className="fas fa-cube me-2"></i>
                     Stock Inventory
                   </h4>
-                  {/* <div className="stock-count d-flex align-items-center">
-                    <span className="badge bg-primary-subtle text-primary fs-6 px-3 py-2 rounded-pill">
-                      <i className="fas fa-boxes me-1"></i>
-                      {total} {total === 1 ? 'Item' : 'Items'} Available
-                    </span>
-                  </div> */}
                 </div>
-
-                {/* Optional: Add action buttons or filters */}
-                {/* <div className="stock-actions">
-                  <div className="btn-group" role="group" aria-label="Stock actions">
-                    <button type="button" className="btn btn-outline-primary btn-sm">
-                      <i className="fas fa-filter me-1"></i>
-                      Filter
-                    </button>
-                    <button type="button" className="btn btn-outline-success btn-sm">
-                      <i className="fas fa-plus me-1"></i>
-                      Add Stock
-                    </button>
-                  </div>
-                </div> */}
               </div>
 
-              {/* Optional: Stock summary cards */}
+              {/* Stock summary cards */}
               <div className="stock-summary mt-2">
                 <Row className="g-2">
                   <Col md={3}>
@@ -676,48 +713,6 @@ export class PosOrderIndex extends Component {
                       </div>
                     </div>
                   </Col>
-                  {/* <Col md={3}>
-                    <div className="stock-card bg-warning-subtle border border-warning-subtle rounded p-2">
-                      <div className="d-flex align-items-center">
-                        <div className="icon-wrapper bg-warning text-white rounded-circle me-2"
-                          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <i className="fas fa-exclamation-triangle fa-sm"></i>
-                        </div>
-                        <div>
-                          <small className="text-muted d-block">Low Stock</small>
-                          <span className="fw-bold text-warning">0</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col md={3}>
-                    <div className="stock-card bg-danger-subtle border border-danger-subtle rounded p-2">
-                      <div className="d-flex align-items-center">
-                        <div className="icon-wrapper bg-danger text-white rounded-circle me-2"
-                          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <i className="fas fa-times-circle fa-sm"></i>
-                        </div>
-                        <div>
-                          <small className="text-muted d-block">Out of Stock</small>
-                          <span className="fw-bold text-danger">0</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col md={3}>
-                    <div className="stock-card bg-info-subtle border border-info-subtle rounded p-2">
-                      <div className="d-flex align-items-center">
-                        <div className="icon-wrapper bg-info text-white rounded-circle me-2"
-                          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <i className="fas fa-chart-line fa-sm"></i>
-                        </div>
-                        <div>
-                          <small className="text-muted d-block">Total Value</small>
-                          <span className="fw-bold text-info">₦0</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Col> */}
                   <Col md={5}>
                     <div style={{ maxWidth: "500px", marginBottom: "10px" }}>
                       <div style={{ display: "flex", alignItems: "center" }}>
@@ -800,7 +795,6 @@ export class PosOrderIndex extends Component {
                            <Button
                             variant="outline-secondary"
                             size="sm"
-                          
                             onClick={this.handlePrint}
                           >
                             <i className="fas fa-print me-2"></i>
@@ -811,15 +805,12 @@ export class PosOrderIndex extends Component {
                       </ButtonGroup>
                     </div>
                   </Col>
-
                 </Row>
               </div>
             </Col>
           </Row>
 
           <Card border="light" className="shadow-sm mb-4">
-
-
             <Row className="g-4">
               {/* Left Column - Product Inventory */}
               <Col md={6}>
@@ -860,11 +851,6 @@ export class PosOrderIndex extends Component {
                                         </span>
                                       </div>
                                       <div className="product-meta" style={{ fontSize: 20 }}>
-                                        {/* <span className="badge bg-secondary me-2">
-                                          <i className="fas fa-barcode me-1"></i>
-                                          {stock.tracking}
-                                        </span> */}
-
                                         <span className="badge bg-success me-2">
                                           <i className="fas fa-cube me-1"></i>
                                           Stock: {stock.in_stock}
@@ -1117,9 +1103,8 @@ export class PosOrderIndex extends Component {
                                     </Button>
                                   </Form.Group>
                                 </Col>
-
-
                               </Row>
+                              
                               <Row className="pt-4">
                                 <Col md={6} className="">
                                   <Form.Group>
@@ -1139,10 +1124,11 @@ export class PosOrderIndex extends Component {
                                     </Form.Select>
                                   </Form.Group>
                                 </Col>
+                                
                                 <Col md={6}>
                                   <Form.Group>
                                     <Form.Label className="fw-semibold mb-2">
-                                      <i className="fas fa-money-bill-wave me-2"></i>
+                                      <i className="fas fa-truck me-2"></i>
                                       Delivery Fee
                                     </Form.Label>
                                     <InputNumber
@@ -1163,9 +1149,35 @@ export class PosOrderIndex extends Component {
                                       }}
                                       onChange={(e) => this.onChange(e, "delivery_fee")}
                                       placeholder="Enter Delivery Fee"
+                                      value={delivery_fee}
                                     />
                                   </Form.Group>
                                 </Col>
+                                
+                                <Col md={6}>
+                                  <Form.Group>
+                                    <Form.Label className="fw-semibold mb-2">
+                                      <i className="fas fa-percentage me-2"></i>
+                                      Discount (%)
+                                    </Form.Label>
+                                    <InputNumber
+                                      style={{
+                                        width: "100%",
+                                        height: "45px",
+                                        borderRadius: "8px",
+                                        fontSize: "16px"
+                                      }}
+                                      min={0}
+                                      max={100}
+                                      formatter={(value) => `${value}%`}
+                                      parser={(value) => value.replace('%', '')}
+                                      onChange={(e) => this.onChange(e, "discount_percent")}
+                                      placeholder="Enter Discount %"
+                                      value={discount_percent}
+                                    />
+                                  </Form.Group>
+                                </Col>
+                                
                                 <Col md={6}>
                                   <Form.Group>
                                     <Form.Label className="fw-semibold mb-2">
@@ -1193,15 +1205,48 @@ export class PosOrderIndex extends Component {
                                     />
                                   </Form.Group>
                                 </Col>
-                                
                               </Row>
                             </div>
+
+                            {/* Order Summary */}
+                            {cartItem.length > 0 && (
+                              <div className="p-3 border-bottom bg-white">
+                                <h6 className="mb-3 fw-semibold text-muted">
+                                  <i className="fas fa-calculator me-2"></i>
+                                  Order Summary
+                                </h6>
+                                <div className="order-summary">
+                                  <div className="d-flex justify-content-between mb-2">
+                                    <span>Subtotal:</span>
+                                    <span className="fw-semibold">{this.formatCurrency(subtotal)}</span>
+                                  </div>
+                                  
+                                  {discount_percent > 0 && (
+                                    <div className="d-flex justify-content-between mb-2 text-success">
+                                      <span>Discount ({discount_percent}%):</span>
+                                      <span className="fw-semibold">-{this.formatCurrency(discount)}</span>
+                                    </div>
+                                  )}
+                                  
+                                  {delivery_fee > 0 && (
+                                    <div className="d-flex justify-content-between mb-2">
+                                      <span>Delivery Fee:</span>
+                                      <span className="fw-semibold">{this.formatCurrency(delivery_fee)}</span>
+                                    </div>
+                                  )}
+                                  
+                                  <hr className="my-2" />
+                                  <div className="d-flex justify-content-between">
+                                    <span className="fw-bold fs-5">Total:</span>
+                                    <span className="fw-bold fs-5 text-success">{this.totalCartP()}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
 
                             {/* Payment Amount & Checkout */}
                             <div className="p-3">
                               <Row className="align-items-end">
-
-
                                 <Col md={6}>
                                   <Button
                                     variant="success"

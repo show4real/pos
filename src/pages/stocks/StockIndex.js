@@ -26,6 +26,7 @@ import { Pagination } from "antd";
 import EditBarcode from "../purchase/EditBarcode";
 import EditStock from "./EditStock";
 import StockMovementHistory from "./StockMovementHistory";
+import EditPrice from "./EditPrice";
 
 export class StockIndex extends Component {
   constructor(props) {
@@ -58,6 +59,7 @@ export class StockIndex extends Component {
       stockToDelete: null,
       deleting: false,
       editBarcode: null,
+      editPrice:null,
       // For move stock modal
       showMoveModal: false,
       stockToMove: null,
@@ -574,8 +576,17 @@ export class StockIndex extends Component {
     this.getStocks();
   };
 
+  toggleCloseEditPrice = () => {
+    this.setState({ editPrice: !this.state.editPrice });
+    this.getStocks();
+  };
+
   toggleUpdateBarcode = (editBarcode) => {
     this.setState({ editBarcode });
+  };
+
+  toggleUpdatePrice = (editPrice) => {
+    this.setState({ editPrice });
   };
 
   toggleCloseUpdateStock = () => {
@@ -638,6 +649,7 @@ export class StockIndex extends Component {
       stockToDelete,
       deleting,
       editBarcode,
+      editPrice,
       updateStock,
       // Move stock state
       showMoveModal,
@@ -687,6 +699,10 @@ export class StockIndex extends Component {
 
         {editBarcode && (
           <EditBarcode stock={editBarcode} toggle={() => this.toggleCloseBarcode()} />
+        )}
+
+        {editPrice && (
+          <EditPrice stock={editPrice} toggle={() => this.toggleCloseEditPrice()} />
         )}
 
         
@@ -1092,6 +1108,18 @@ export class StockIndex extends Component {
                               <i className="fa fa-barcode" />
                               Update Barcode
                             </Button>
+                            <Button
+                              variant="outline-primary"
+                              type="submit"
+                              className="d-flex align-items-center gap-2"
+                              size="sm"
+                              onClick={() =>
+                                this.toggleUpdatePrice(stock)
+                              }
+                            >
+                              <i className="fa fa-barcode" />
+                              Edit Price / Add Qty
+                            </Button>
 
                             {/* Move Stock Button - Show only when there's stock to move */}
                             {stock.in_stock > 0 && (
@@ -1123,17 +1151,17 @@ export class StockIndex extends Component {
                           )}
                                                   
                          {(stock.quantity_sold === 0 && (!stock.movements_from?.length && !stock.movements_to?.length)) && (
-  <Button
-    variant="outline-danger"
-    size="sm"
-    onClick={() => this.handleDeleteStock(stock)}
-    className="d-flex align-items-center gap-2"
-    title="Delete stock (only available when no items have been sold or moved)"
-  >
-    <i className="fa fa-trash" />
-    Delete
-  </Button>
-)}
+                              <Button
+                                variant="outline-danger"
+                                size="sm"
+                                onClick={() => this.handleDeleteStock(stock)}
+                                className="d-flex align-items-center gap-2"
+                                title="Delete stock (only available when no items have been sold or moved)"
+                              >
+                                <i className="fa fa-trash" />
+                                Delete
+                              </Button>
+                            )}
                         </div>
                       </td>
                     </tr>

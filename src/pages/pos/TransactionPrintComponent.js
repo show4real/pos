@@ -2,21 +2,25 @@ import React, { Component } from "react";
 import moment from "moment";
 
 export class TransactionPrintComponent extends Component {
-  // Method to combine products with the same product_id
+  // Method to combine products with the same product_id AND same selling_price
   combineProducts = (transactionDetails) => {
     const productMap = new Map();
     
     transactionDetails.forEach((item) => {
       const productId = item.product_id || item.id; // Handle both product_id and id
+      const sellingPrice = item.selling_price;
       
-      if (productMap.has(productId)) {
-        // Product already exists, combine quantities and recalculate total
-        const existing = productMap.get(productId);
+      // Create a unique key combining product ID and selling price
+      const uniqueKey = `${productId}_${sellingPrice}`;
+      
+      if (productMap.has(uniqueKey)) {
+        // Product with same ID and price already exists, combine quantities and recalculate total
+        const existing = productMap.get(uniqueKey);
         existing.qty_sold += item.qty_sold;
         existing.total = existing.qty_sold * existing.selling_price;
       } else {
-        // New product, add to map with calculated total
-        productMap.set(productId, {
+        // New product or same product with different price, add to map with calculated total
+        productMap.set(uniqueKey, {
           ...item,
           total: item.qty_sold * item.selling_price
         });
@@ -24,6 +28,11 @@ export class TransactionPrintComponent extends Component {
     });
     
     return Array.from(productMap.values());
+  };
+
+  // Calculate subtotal from combined products
+  getSubtotal = (combinedProducts) => {
+    return combinedProducts.reduce((sum, item) => sum + item.total, 0);
   };
 
   render() {
@@ -39,11 +48,19 @@ export class TransactionPrintComponent extends Component {
       balance,
       prev_balance,
       total_balance,
-      delivery_fee
+      delivery_fee,
+      discount,
+      discount_percent
     } = this.props;
 
-    // Combine products with the same product_id
+    // Combine products with the same product_id and selling_price
     const combinedProducts = this.combineProducts(transaction_detail || []);
+    
+    // Calculate subtotal
+    const subtotal = this.getSubtotal(combinedProducts);
+    
+    // Calculate final total with discount and delivery fee
+    const calculatedTotal = subtotal - (discount || 0) + (delivery_fee || 0);
 
     return (
       <div className="print-container" style={{ display: 'none' }}>
@@ -147,6 +164,12 @@ export class TransactionPrintComponent extends Component {
                 <p style={{ margin: '5px 0' }}>
                   <strong>Client:</strong> {invoice_data?.client_name || 'Walk-in Customer'}
                 </p>
+                {/* Show discount percentage if applied */}
+                {discount_percent > 0 && (
+                  <p style={{ margin: '5px 0', color: '#28a745', fontWeight: 'bold' }}>
+                    <strong>Discount Applied:</strong> {discount_percent}%
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -193,14 +216,14 @@ export class TransactionPrintComponent extends Component {
                   }}>
                     Quantity
                   </th>
-                  <th style={{ 
+                  {/* <th style={{ 
                     border: '1px solid #000', 
                     padding: '8px', 
                     textAlign: 'center',
                     fontWeight: 'bold'
                   }}>
                     Supplier
-                  </th>
+                  </th> */}
                   <th style={{ 
                     border: '1px solid #000', 
                     padding: '8px', 
@@ -226,9 +249,9 @@ export class TransactionPrintComponent extends Component {
                     <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
                       {item.qty_sold}
                     </td>
-                    <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
+                    {/* <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
                       {item.supplier_name || 'N/A'}
-                    </td>
+                    </td> */}
                     <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right' }}>
                       {this.props.formatNumber(item.total)}
                     </td>
@@ -238,33 +261,60 @@ export class TransactionPrintComponent extends Component {
             </table>
           </div>
 
-          {/* Total Section */}
+          {/* Total Section with Calculation Breakdown */}
           <div style={{ marginBottom: '20px' }}>
-            {/* Total */}
+            {/* Subtotal */}
             <div style={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
-              marginBottom: '10px',
-              borderTop: '1px solid #000',
-              paddingTop: '10px',
-              fontSize: '12px',
-              fontWeight: 'bold'
+              marginBottom: '8px',
+              fontSize: '14px'
             }}>
-              <span><strong>Delivery Fee:</strong></span>
-              <span><strong>{(company?.currency || '')} {this.props.formatNumber(delivery_fee)}</strong></span>
+              <span>Subtotal:</span>
+              <span>{(company?.currency || '')} {this.props.formatNumber(subtotal)}</span>
             </div>
+
+            {/* Discount (if applied) */}
+            {discount > 0 && (
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                marginBottom: '8px',
+                fontSize: '14px',
+                color: '#28a745'
+              }}>
+                <span>Discount ({discount_percent}%):</span>
+                <span>-{(company?.currency || '')} {this.props.formatNumber(discount)}</span>
+              </div>
+            )}
+
+            {/* Delivery Fee */}
+            {delivery_fee > 0 && (
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                marginBottom: '10px',
+                fontSize: '14px'
+              }}>
+                <span>Delivery Fee:</span>
+                <span>{(company?.currency || '')} {this.props.formatNumber(delivery_fee)}</span>
+              </div>
+            )}
+
             {/* Total */}
             <div style={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
-              marginBottom: '10px',
-              borderTop: '1px solid #000',
+              marginBottom: '15px',
+              borderTop: '2px solid #000',
+              borderBottom: '1px solid #000',
               paddingTop: '10px',
+              paddingBottom: '10px',
               fontSize: '16px',
               fontWeight: 'bold'
             }}>
-              <span><strong>Total:</strong></span>
-              <span><strong>{(company?.currency || '')} {this.props.formatNumber(invoice_data?.total || transaction_total)}</strong></span>
+              <span><strong>TOTAL:</strong></span>
+              <span><strong>{(company?.currency || '')} {this.props.formatNumber(transaction_total || calculatedTotal)}</strong></span>
             </div>
 
             {/* Amount Paid */}
@@ -275,7 +325,7 @@ export class TransactionPrintComponent extends Component {
                 marginBottom: '8px',
                 fontSize: '14px'
               }}>
-                <span>Paid:</span>
+                <span>Amount Paid:</span>
                 <span>{(company?.currency || '')} {this.props.formatNumber(invoice_data.amount_paid)}</span>
               </div>
             )}
@@ -319,6 +369,30 @@ export class TransactionPrintComponent extends Component {
                 <span><strong>{(company?.currency || '')} {this.props.formatNumber(total_balance)}</strong></span>
               </div>
             )}
+
+            {/* Savings Summary (if discount applied) */}
+            {discount > 0 && (
+              <div style={{ 
+                backgroundColor: '#d4edda',
+                border: '1px solid #c3e6cb',
+                borderRadius: '4px',
+                padding: '10px',
+                marginTop: '15px',
+                textAlign: 'center'
+              }}>
+                <div style={{ 
+                  fontSize: '14px', 
+                  fontWeight: 'bold', 
+                  color: '#155724',
+                  marginBottom: '5px'
+                }}>
+                  🎉 YOU SAVED: {(company?.currency || '')} {this.props.formatNumber(discount)}
+                </div>
+                <div style={{ fontSize: '12px', color: '#155724' }}>
+                  With {discount_percent}% discount applied
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Terms and Conditions */}
@@ -351,4 +425,5 @@ export class TransactionPrintComponent extends Component {
     );
   }
 }
+
 export default TransactionPrintComponent;

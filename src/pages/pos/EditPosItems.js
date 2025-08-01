@@ -58,7 +58,9 @@ export class PosOrderIndex extends Component {
       serials2: [],
       payment_mode: "",
       amount_paid: 0,
-      delivery_fee:0,
+      delivery_fee: 0,
+      discount: 0, // Added discount field
+      discount_percent: 0, // Added discount percentage field
       client_id: "",
       selectedClient: { value: "", label: "" },
       total_purchase: 0,
@@ -180,6 +182,37 @@ export class PosOrderIndex extends Component {
     this.setState({ [state]: e });
   };
 
+  // Updated discount handling methods
+  handleDiscountChange = (value) => {
+    this.setState({ 
+      discount: value,
+      discount_percent: 0 // Reset percentage when fixed discount is applied
+    });
+  };
+
+  handleDiscountPercentChange = (value) => {
+    const { cartItem, delivery_fee } = this.state;
+    const subtotal = this.calculateSubtotal();
+    const discountAmount = (subtotal * value) / 100;
+    
+    this.setState({ 
+      discount_percent: value,
+      discount: discountAmount // Calculate fixed discount from percentage
+    });
+  };
+
+  calculateSubtotal = () => {
+    const { cartItem } = this.state;
+    let sum = 0;
+    for (let i = 0; i < cartItem.length; i += 1) {
+      sum +=
+        cartItem[i].quantity !== 0
+          ? cartItem[i].quantity * cartItem[i].order.unit_selling_price
+          : 0 * cartItem[i].order.unit_selling_price;
+    }
+    return sum;
+  };
+
   incrementCount(item, index) {
     const items = this.state.cartItem;
     console.log(items);
@@ -249,6 +282,8 @@ export class PosOrderIndex extends Component {
       due_date,
       amount_paid,
       delivery_fee,
+      discount, // Added discount to save data
+      discount_percent, // Added discount_percent to save data
       invoice_id,
     } = this.state;
     editSales({
@@ -256,7 +291,9 @@ export class PosOrderIndex extends Component {
       payment_mode: payment_mode,
       tracking_id: cartItem.tracking_id,
       amount_paid: amount_paid,
-      delivery_fee:delivery_fee,
+      delivery_fee: delivery_fee,
+      discount: discount, // Pass discount to API
+      discount_percent: discount_percent, // Pass discount_percent to API
       client_id: client_id,
       due_date: due_date,
       total_purchase: total_purchase,
@@ -288,8 +325,9 @@ export class PosOrderIndex extends Component {
     toast(<div style={{ padding: 20 }}>{msg}</div>);
   };
 
+  // Updated totalCartP method to include discount
   totalCartP() {
-    const { cartItem, company, delivery_fee } = this.state;
+    const { cartItem, company, delivery_fee, discount } = this.state;
     let sum = 0;
     for (let i = 0; i < cartItem.length; i += 1) {
       sum +=
@@ -298,13 +336,16 @@ export class PosOrderIndex extends Component {
           : 0 * cartItem[i].order.unit_selling_price;
     }
     console.log(cartItem);
-    return this.formatCurrency(sum + delivery_fee);
+    const total = sum + delivery_fee - discount;
+    return this.formatCurrency(total);
   }
 
   clearCart() {
     this.setState({
       cartItem: [],
       sales: [],
+      discount: 0, // Reset discount when clearing cart
+      discount_percent: 0, // Reset discount percentage when clearing cart
     });
     this.getPurchaseOrders();
   }
@@ -334,6 +375,8 @@ export class PosOrderIndex extends Component {
           cartItem: res.sold_stocks,
           amount_paid: res.prev_invoice.amount_paid,
           delivery_fee: res.prev_invoice.delivery_fee,
+          discount: res.prev_invoice.discount || 0, // Load existing discount
+          discount_percent: res.prev_invoice.discount_percent || 0, // Load existing discount_percent
           payment_mode: res.prev_invoice.payment_mode,
           client_id: res.prev_invoice.client_id,
           selectedClient: {
@@ -497,8 +540,11 @@ export class PosOrderIndex extends Component {
       selectedClient,
       amount_paid,
       delivery_fee,
+      discount, // Added discount to render
+      discount_percent, // Added discount_percent to render
       prev_balance,
     } = this.state;
+    
     var p_mode = pos_items.map(function (p) {
       return p.payment_mode;
     });
@@ -511,6 +557,11 @@ export class PosOrderIndex extends Component {
     const transaction_total = pos_items
       .map((p) => p.selling_price * p.qty_sold)
       .reduce((prev, curr) => prev + curr, 0);
+
+    // Calculate subtotal and total with discount
+    const subtotal = this.calculateSubtotal();
+    const totalWithDiscount = subtotal + delivery_fee - discount;
+
     return (
       <>
         {sales && (
@@ -523,6 +574,8 @@ export class PosOrderIndex extends Component {
               prev_balance={prev_balance}
               user={user}
               delivery_fee={delivery_fee}
+              discount={discount} // Pass discount to Invoice component
+              discount_percent={discount_percent} // Pass discount_percent to Invoice component
               ref={(el) => (this.componentRef = el)}
               toggle={() => this.setState({ invoice: {} })}
             />
@@ -534,11 +587,13 @@ export class PosOrderIndex extends Component {
               transaction_date_time={transaction_date_time[0]}
               payment_mode={p_mode[0]}
               cashier_name={cashier_name[0]}
-              transaction_total={transaction_total + delivery_fee}
+              transaction_total={transaction_total + delivery_fee - discount} // Apply discount to transaction total
               balance={invoice.balance}
               prev_balance={prev_balance}
               total_balance={total_balance}
-              delivery_fee = {delivery_fee}
+              delivery_fee={delivery_fee}
+              discount={discount} // Pass discount to TransactionPrintComponent
+              discount_percent={discount_percent} // Pass discount_percent to TransactionPrintComponent
               formatNumber={this.formatNumber}
             />
           </div>
@@ -586,8 +641,6 @@ export class PosOrderIndex extends Component {
                 <Col md={8}>
                   <Row>
                     <Col md="6">
-
-
                       <div style={{ maxWidth: "500px", marginBottom: "10px" }}>
                         <div style={{ display: "flex", alignItems: "center" }}>
                           <input
@@ -670,7 +723,6 @@ export class PosOrderIndex extends Component {
                         <Button
                           variant="outline-secondary"
                           size="sm"
-
                           onClick={this.handlePrint}
                         >
                           <i className="fas fa-print me-2"></i>
@@ -956,12 +1008,116 @@ export class PosOrderIndex extends Component {
                               </Card.Body>
                             </Card>
 
+                            {/* Discount Section */}
+                            {cartItem.length > 0 && (
+                              <Card className="border mb-3">
+                                <Card.Body>
+                                  <Row>
+                                    <Col md={6} className="mb-3">
+                                      <Form.Group>
+                                        <Form.Label className="fw-semibold">
+                                          <i className="fa fa-percent me-2 text-warning"></i>
+                                          Discount Percentage
+                                        </Form.Label>
+                                        <InputNumber
+                                          style={{
+                                            width: "100%",
+                                            height: 40,
+                                            fontSize: 16,
+                                          }}
+                                          min={0}
+                                          max={100}
+                                          formatter={(value) => `${value}%`}
+                                          parser={(value) => value.replace('%', '')}
+                                          value={discount_percent}
+                                          onChange={this.handleDiscountPercentChange}
+                                          placeholder="Enter discount %"
+                                        />
+                                      </Form.Group>
+                                    </Col>
+                                    <Col md={6} className="mb-3">
+                                      <Form.Group>
+                                        <Form.Label className="fw-semibold">
+                                          <i className="fa fa-money-bill me-2 text-warning"></i>
+                                          Fixed Discount Amount
+                                        </Form.Label>
+                                        <InputNumber
+                                          style={{
+                                            width: "100%",
+                                            height: 40,
+                                            fontSize: 16,
+                                          }}
+                                          formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                                          parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+                                          min={0}
+                                          max={subtotal}
+                                          value={discount}
+                                          onChange={this.handleDiscountChange}
+                                          placeholder="Enter discount amount"
+                                        />
+                                      </Form.Group>
+                                    </Col>
+                                  </Row>
+                                  
+                                  {/* Discount Summary */}
+                                  {discount > 0 && (
+                                    <Row>
+                                      <Col md={12}>
+                                        <div className="bg-warning bg-opacity-10 p-3 rounded border">
+                                          <div className="d-flex justify-content-between align-items-center">
+                                            <span className="fw-bold text-white">
+                                              <i className="fa fa-tag me-2"></i>
+                                              Discount Applied:
+                                            </span>
+                                            <span className="fw-bold text-white">
+                                              {this.formatCurrency(discount)}
+                                              {discount_percent > 0 && ` (${discount_percent.toFixed(1)}%)`}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </Col>
+                                    </Row>
+                                  )}
+                                </Card.Body>
+                              </Card>
+                            )}
+
+                            {/* Order Summary */}
+                            {cartItem.length > 0 && (
+                              <Card className="border mb-3">
+                                <Card.Body>
+                                  <h6 className="fw-bold mb-3">
+                                    <i className="fa fa-calculator me-2 text-info"></i>
+                                    Order Summary
+                                  </h6>
+                                  <div className="d-flex justify-content-between mb-2">
+                                    <span>Subtotal:</span>
+                                    <span className="fw-semibold">{this.formatCurrency(subtotal)}</span>
+                                  </div>
+                                  <div className="d-flex justify-content-between mb-2">
+                                    <span>Delivery Fee:</span>
+                                    <span className="fw-semibold">{this.formatCurrency(delivery_fee)}</span>
+                                  </div>
+                                  {discount > 0 && (
+                                    <div className="d-flex justify-content-between mb-2 text-warning">
+                                      <span>Discount:</span>
+                                      <span className="fw-semibold">-{this.formatCurrency(discount)}</span>
+                                    </div>
+                                  )}
+                                  <hr />
+                                  <div className="d-flex justify-content-between mb-0">
+                                    <span className="fw-bold fs-5">Total:</span>
+                                    <span className="fw-bold fs-5 text-success">{this.formatCurrency(totalWithDiscount)}</span>
+                                  </div>
+                                </Card.Body>
+                              </Card>
+                            )}
+
                             {/* Payment & Checkout */}
                             {cartItem.length > 0 && (
                               <Card className="border">
                                 <Card.Body>
                                   <Row className="align-items-end">
-                                    
                                     <Col md={6} className="mb-3">
                                       <Form.Group>
                                         <Form.Label className="fw-semibold">Amount Received</Form.Label>

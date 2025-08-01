@@ -12,9 +12,10 @@ const ClientPayments = () => {
   // State management
   const [data, setData] = useState({
     client_invoices_payments: { data: [], total: 0, current_page: 1 },
-    total_balance: 0,
-    balance: 0,
-    prev_balance: 0,
+    total_amount: 0,
+    total_paid: 0,
+    last_paid: 0,
+    // Remove inconsistent fields to avoid confusion
   });
   const [pagination, setPagination] = useState({ rows: 5, page: 1 });
   const [loading, setLoading] = useState(false);
@@ -36,9 +37,66 @@ const ClientPayments = () => {
   // Utility function for currency formatting
   const formatCurrency = useCallback((amount) => {
     if (amount == null || amount === 0) return "0";
-    const parts = amount.toString().split(".");
+    const parts = Math.abs(amount).toString().split(".");
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     return parts.join(".");
+  }, []);
+
+  // Calculate totals from invoice data
+  const calculateTotals = useCallback((invoicesData) => {
+    if (!invoicesData || !Array.isArray(invoicesData)) {
+      return {
+        totalPurchases: 0,
+        totalPaid: 0,
+        currentBalance: 0,
+        previousBalance: 0,
+        lastPaymentAmount: 0
+      };
+    }
+
+    let totalPurchases = 0;
+    let allPayments = [];
+
+    // First pass: collect all invoice amounts and payments
+    invoicesData.forEach(invoice => {
+      // Sum up all invoice amounts (total purchases)
+      totalPurchases += parseFloat(invoice.amount || 0);
+      
+      // Collect all individual payments with dates
+      if (invoice.payments && Array.isArray(invoice.payments)) {
+        invoice.payments.forEach(payment => {
+          allPayments.push({
+            amount: parseFloat(payment.amount_paid || 0),
+            date: new Date(payment.created_at),
+            invoice_num: payment.invoice_num
+          });
+        });
+      }
+    });
+
+    // Sort payments by date (newest first)
+    allPayments.sort((a, b) => b.date - a.date);
+
+    // Calculate total paid (sum of all payments)
+    const totalPaid = allPayments.reduce((sum, payment) => sum + payment.amount, 0);
+
+    // Get the most recent payment
+    const lastPaymentAmount = allPayments.length > 0 ? allPayments[0].amount : 0;
+
+    // Calculate current balance
+    const currentBalance = totalPurchases - totalPaid;
+
+    // Calculate previous balance (excluding the most recent payment)
+    const totalPaidExcludingLast = totalPaid - lastPaymentAmount;
+    const previousBalance = totalPurchases - totalPaidExcludingLast;
+
+    return {
+      totalPurchases,
+      totalPaid,
+      currentBalance,
+      previousBalance,
+      lastPaymentAmount
+    };
   }, []);
 
   // Fetch company details
@@ -81,14 +139,26 @@ const ClientPayments = () => {
       }
 
       const result = await response.json();
-      setData(result);
+      
+      // Calculate totals from the received data
+      const totals = calculateTotals(result.client_invoices_payments?.data);
+      
+      // Update state with calculated totals (prioritize calculated values)
+      setData({
+        ...result,
+        total_amount: totals.totalPurchases,
+        total_paid: totals.totalPaid,
+        last_paid: totals.lastPaymentAmount,
+        current_balance: totals.currentBalance,
+        previous_balance: totals.previousBalance,
+      });
     } catch (error) {
       console.error("Error fetching client payments:", error);
       setError("Failed to load payment data");
     } finally {
       setLoading(false);
     }
-  }, [user?.token, id, pagination]);
+  }, [user?.token, id, pagination, calculateTotals]);
 
   // Handle pagination changes
   const handlePageChange = useCallback((page, pageSize = pagination.rows) => {
@@ -104,11 +174,16 @@ const ClientPayments = () => {
     fetchPayments();
   }, [fetchPayments]);
 
-  // Computed values
-  const hasPayments = data.client_invoices_payments.data.length > 0;
+  // Computed values with proper fallbacks
+  const hasPayments = data.client_invoices_payments?.data?.length > 0;
   const firstInvoice = hasPayments ? data.client_invoices_payments.data[0] : null;
-  const totalBalance = data.total_amount - data.total_paid;
-  const previousBalance = data.total_amount - (data.total_paid - data.last_paid);
+  
+  // Use calculated values directly
+  const totalPurchases = parseFloat(data.total_amount || 0);
+  const totalPaid = parseFloat(data.total_paid || 0);
+  const lastPaid = parseFloat(data.last_paid || 0);
+  const currentBalance = parseFloat(data.current_balance || 0);
+  const previousBalance = parseFloat(data.previous_balance || 0);
 
   // Loading state
   if (loading && !hasPayments) {
@@ -132,11 +207,11 @@ const ClientPayments = () => {
           <InvoiceBalance
             invoice={firstInvoice}
             company={company}
-            total_balance={data.total_balance}
-            prev_balance={data.prev_balance}
-            last_paid={data.last_paid}
-            total_amount={data.total_amount}
-            total_paid={data.total_paid}
+            total_balance={currentBalance}
+            prev_balance={previousBalance}
+            last_paid={lastPaid}
+            total_amount={totalPurchases}
+            total_paid={totalPaid}
             user={user}
             ref={printRef}
             toggle={() => setData(prev => ({ ...prev }))}
@@ -186,7 +261,11 @@ const ClientPayments = () => {
                       <h6 className="text-muted mb-2">Financial Summary</h6>
                       <p className="mb-1">
                         <strong>Total Purchases:</strong> 
-                        <span className="text-info ms-2">NGN {formatCurrency(data.total_amount)}</span>
+                        <span className="text-info ms-2">NGN {formatCurrency(totalPurchases)}</span>
+                      </p>
+                      <p className="mb-1">
+                        <strong>Total Paid:</strong> 
+                        <span className="text-success ms-2">NGN {formatCurrency(totalPaid)}</span>
                       </p>
                       <p className="mb-1">
                         <strong>Previous Balance:</strong> 
@@ -194,12 +273,12 @@ const ClientPayments = () => {
                       </p>
                       <p className="mb-1">
                         <strong>Last Payment:</strong> 
-                        <span className="text-success ms-2">NGN {formatCurrency(data.last_paid)}</span>
+                        <span className="text-primary ms-2">NGN {formatCurrency(lastPaid)}</span>
                       </p>
                       <p className="mb-0">
                         <strong>Current Balance:</strong> 
-                        <span className={`ms-2 ${totalBalance > 0 ? 'text-danger' : 'text-success'}`}>
-                          NGN {formatCurrency(totalBalance)}
+                        <span className={`ms-2 fw-bold ${currentBalance > 0 ? 'text-danger' : currentBalance < 0 ? 'text-success' : 'text-muted'}`}>
+                          NGN {currentBalance < 0 ? '-' : ''}{formatCurrency(Math.abs(currentBalance))}
                         </span>
                       </p>
                     </div>
@@ -215,7 +294,7 @@ const ClientPayments = () => {
           </Card.Body>
 
           {/* Pagination */}
-          {data.client_invoices_payments.total > 0 && (
+          {data.client_invoices_payments?.total > 0 && (
             <Card.Footer className="bg-white">
               <Row>
                 <Col className="d-flex justify-content-center">
@@ -234,75 +313,83 @@ const ClientPayments = () => {
           )}
 
           {/* Invoice Data */}
-          {data.client_invoices_payments.data.map((invoice, index) => (
-            <Card.Body key={index} className={index > 0 ? "border-top" : ""}>
-              <div className="invoice-header bg-light rounded p-3 mb-3">
-                <Row className="g-2">
-                  <Col sm={6} md={4} lg={2}>
-                    <small className="text-muted d-block">Invoice No</small>
-                    <strong className="text-primary">{invoice.invoice_no}</strong>
-                  </Col>
-                  <Col sm={6} md={4} lg={2}>
-                    <small className="text-muted d-block">Amount</small>
-                    <strong>{invoice.currency}{formatCurrency(invoice.amount)}</strong>
-                  </Col>
-                  <Col sm={6} md={4} lg={2}>
-                    <small className="text-muted d-block">Total Paid</small>
-                    <strong className="text-success">
-                      {invoice.currency}{formatCurrency(invoice.amount_paid)}
-                    </strong>
-                  </Col>
-                  <Col sm={6} md={4} lg={2}>
-                    <small className="text-muted d-block">Balance</small>
-                    <strong className={invoice.amount - invoice.amount_paid > 0 ? "text-danger" : "text-success"}>
-                      {invoice.currency}{formatCurrency(invoice.amount - invoice.amount_paid)}
-                    </strong>
-                  </Col>
-                  <Col sm={6} md={4} lg={2}>
-                    <small className="text-muted d-block">Date</small>
-                    <strong>{moment(invoice.created_at).format("MMM DD, YYYY")}</strong>
-                  </Col>
-                  <Col sm={6} md={4} lg={2}>
-                    <small className="text-muted d-block">Cashier</small>
-                    <strong>{invoice.cashier_name}</strong>
-                  </Col>
-                </Row>
-              </div>
+          {data.client_invoices_payments?.data?.map((invoice, index) => {
+            const invoiceBalance = parseFloat(invoice.amount || 0) - parseFloat(invoice.amount_paid || 0);
+            
+            return (
+              <Card.Body key={index} className={index > 0 ? "border-top" : ""}>
+                <div className="invoice-header bg-light rounded p-3 mb-3">
+                  <Row className="g-2">
+                    <Col sm={6} md={4} lg={2}>
+                      <small className="text-muted d-block">Invoice No</small>
+                      <strong className="text-primary">{invoice.invoice_no}</strong>
+                    </Col>
+                    <Col sm={6} md={4} lg={2}>
+                      <small className="text-muted d-block">Amount</small>
+                      <strong>{invoice.currency}{formatCurrency(invoice.amount)}</strong>
+                    </Col>
+                    <Col sm={6} md={4} lg={2}>
+                      <small className="text-muted d-block">Total Paid</small>
+                      <strong className="text-success">
+                        {invoice.currency}{formatCurrency(invoice.amount_paid)}
+                      </strong>
+                    </Col>
+                    <Col sm={6} md={4} lg={2}>
+                      <small className="text-muted d-block">Balance</small>
+                      <strong className={invoiceBalance > 0 ? "text-danger" : invoiceBalance < 0 ? "text-success" : "text-muted"}>
+                        {invoice.currency}{invoiceBalance < 0 ? '-' : ''}{formatCurrency(invoiceBalance)}
+                      </strong>
+                    </Col>
+                    <Col sm={6} md={4} lg={2}>
+                      <small className="text-muted d-block">Date</small>
+                      <strong>{moment(invoice.created_at).format("MMM DD, YYYY")}</strong>
+                    </Col>
+                    <Col sm={6} md={4} lg={2}>
+                      <small className="text-muted d-block">Cashier</small>
+                      <strong>{invoice.cashier_name}</strong>
+                    </Col>
+                  </Row>
+                </div>
 
-              <div className="table-responsive">
-                <Table className="table-sm table-hover mb-0">
-                  <thead className="table-light">
-                    <tr>
-                      <th style={{ width: '60px' }}>No</th>
-                      <th>Invoice No</th>
-                      <th style={{ width: '150px' }}>Amount Paid</th>
-                      <th style={{ width: '150px' }}>Transaction Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoice.payments.map((payment, idx) => (
-                      <tr key={idx}>
-                        <td className="text-muted">{idx + 1}</td>
-                        <td>
-                          <span className="text-primary">
-                            {payment.invoice_num}
-                          </span>
-                        </td>
-                        <td>
-                          <strong className="text-success">
-                            {invoice.currency}{formatCurrency(payment.amount_paid)}
-                          </strong>
-                        </td>
-                        <td className="text-muted">
-                          {moment(payment.created_at).format("MMM DD, YYYY")}
-                        </td>
+                <div className="table-responsive">
+                  <Table className="table-sm table-hover mb-0">
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: '60px' }}>No</th>
+                        <th>Invoice No</th>
+                        <th style={{ width: '150px' }}>Amount Paid</th>
+                        <th style={{ width: '150px' }}>Transaction Date</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
-            </Card.Body>
-          ))}
+                    </thead>
+                    <tbody>
+                      {invoice.payments?.map((payment, idx) => (
+                        <tr key={idx}>
+                          <td className="text-muted">{idx + 1}</td>
+                          <td>
+                            <span className="text-primary">
+                              {payment.invoice_num}
+                            </span>
+                          </td>
+                          <td>
+                            <strong className="text-success">
+                              {invoice.currency}{formatCurrency(payment.amount_paid)}
+                            </strong>
+                          </td>
+                          <td className="text-muted">
+                            {moment(payment.created_at).format("MMM DD, YYYY")}
+                          </td>
+                        </tr>
+                      )) || (
+                        <tr>
+                          <td colSpan="4" className="text-center text-muted">No payments recorded</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
+              </Card.Body>
+            );
+          })}
         </Card>
       </div>
     </>
