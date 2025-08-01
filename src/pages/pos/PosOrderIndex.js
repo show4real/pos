@@ -669,36 +669,30 @@ export class PosOrderIndex extends Component {
         {/* {loading && <SpinDiv text={"Loading..."} />} */}
         <div style={{ margin: 5 }}>
           <Row>
-            <Col lg="12">
-              <div className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
-                <div className="d-block mb-4 mb-md-0">
-                  <Breadcrumb
-                    listProps={{
-                      className: " breadcrumb-text-dark text-primary",
-                    }}
-                  >
-                    <Breadcrumb.Item href="/">Home</Breadcrumb.Item>
-                    <Breadcrumb.Item href="/invoices">Invoices</Breadcrumb.Item>
-                    <Breadcrumb.Item href="#">POS</Breadcrumb.Item>
-                  </Breadcrumb>
-                </div>
-              </div>
-            </Col>
+            
           </Row>
           <Row className="mb-2">
             <Col lg="12">
-              <div className="d-flex align-items-center justify-content-between">
-                <div className="stock-header">
-                  <h4 className="mb-1 text-primary fw-bold">
-                    <i className="fas fa-cube me-2"></i>
-                    Stock Inventory
-                  </h4>
-                </div>
-              </div>
+          
 
               {/* Stock summary cards */}
               <div className="stock-summary mt-2">
                 <Row className="g-2">
+                  {/* <Col lg="12">
+                    <div className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-2">
+                      <div className="d-block mb-4 mb-md-0">
+                        <Breadcrumb
+                          listProps={{
+                            className: " breadcrumb-text-dark text-primary",
+                          }}
+                        >
+                          <Breadcrumb.Item href="/">Home</Breadcrumb.Item>
+                          <Breadcrumb.Item href="/invoices">Invoices</Breadcrumb.Item>
+                          <Breadcrumb.Item href="#">POS</Breadcrumb.Item>
+                        </Breadcrumb>
+                      </div>
+                    </div>
+                  </Col> */}
                   <Col md={3}>
                     <div className="stock-card bg-success-subtle border border-success-subtle rounded p-2">
                       <div className="d-flex align-items-center">
@@ -707,7 +701,10 @@ export class PosOrderIndex extends Component {
                           <i className="fas fa-check-circle fa-sm"></i>
                         </div>
                         <div>
-                          <div className="d-block" style={{ fontSize: 20 }}>Available</div>
+                          <div className="d-block" style={{ fontSize: 20 }}>Available  <h4 className="mb-1 text-primary fw-bold">
+                         <a  href="/"> <i className="fas fa-cube me-2"></i></a>
+                          Stock Inventory
+                        </h4></div>
                           <span className="fw-bold text-success">{total} Items</span>
                         </div>
                       </div>
@@ -937,7 +934,7 @@ export class PosOrderIndex extends Component {
               {/* Right Column - Shopping Cart & Checkout */}
               <Col md={6}>
                 <Card className="h-100 shadow-sm border-0">
-                  <Card.Header className="bg-success text-white py-3">
+                  <Card.Header className="bg-success text-white">
                     <div className="d-flex justify-content-between align-items-center">
                       <h5 className="mb-0">
                         <i className="fas fa-shopping-cart me-2"></i>
