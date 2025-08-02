@@ -59,7 +59,7 @@ export class StockIndex extends Component {
       stockToDelete: null,
       deleting: false,
       editBarcode: null,
-      editPrice:null,
+      editPrice: null,
       // For move stock modal
       showMoveModal: false,
       stockToMove: null,
@@ -73,7 +73,7 @@ export class StockIndex extends Component {
       currentBranch: null,
       // For create stock modal
       showCreateModal: false,
-      showEditModal:false,
+      showEditModal: false,
       creating: false,
       allProducts: [],
       allSuppliers: [],
@@ -107,7 +107,17 @@ export class StockIndex extends Component {
         barcode: '',
         notes: ''
       },
-      formErrors: {}
+      formErrors: {},
+      updateStock: null,
+      // Filter persistence state
+      previousFilters: {
+        order: "",
+        selectedProduct: null,
+        start_date: "",
+        end_date: "",
+        search: "",
+        page: 1
+      }
     };
 
     // Create refs
@@ -119,6 +129,46 @@ export class StockIndex extends Component {
     this.getBranches();
     this.getAllProducts();
   }
+
+  // Helper method to save current filter state
+  saveCurrentFilters = () => {
+    const { order, selectedProduct, start_date, end_date, search, page } = this.state;
+    this.setState({
+      previousFilters: {
+        order,
+        selectedProduct,
+        start_date,
+        end_date,
+        search,
+        page
+      }
+    });
+  };
+
+  // Helper method to restore filter state
+  restoreFilters = () => {
+    const { previousFilters } = this.state;
+    this.setState({
+      order: previousFilters.order,
+      selectedProduct: previousFilters.selectedProduct,
+      start_date: previousFilters.start_date,
+      end_date: previousFilters.end_date,
+      search: previousFilters.search,
+      page: previousFilters.page
+    });
+  };
+
+  // Enhanced method to reload data while preserving filters
+  reloadStocksWithFilters = (callback = null) => {
+    // Save current filters before reloading
+    this.saveCurrentFilters();
+    
+    // Small delay to ensure state is saved
+    setTimeout(() => {
+      this.getStocks();
+      if (callback) callback();
+    }, 50);
+  };
 
   showToast = (msg) => {
     toast(<div style={{ padding: 20, color: "success" }}>{msg}</div>);
@@ -210,6 +260,9 @@ export class StockIndex extends Component {
 
   // Create stock functionality
   handleCreateStock = () => {
+    // Save filters before opening modal
+    this.saveCurrentFilters();
+    
     const initialFormData = {
       product_id: null,
       supplier_id: null,
@@ -327,14 +380,16 @@ export class StockIndex extends Component {
   };
 
   confirmCreateStock = async () => {
-    
     this.setState({
       showCreateModal: false,
       selectedCreateProduct: null,
       selectedCreateSupplier: null,
       formErrors: {}
     });
-    this.getStocks();
+    
+    // Restore filters and reload data
+    this.restoreFilters();
+    this.reloadStocksWithFilters();
   };
 
   cancelCreateStock = () => {
@@ -358,18 +413,27 @@ export class StockIndex extends Component {
       selectedCreateSupplier: null,
       formErrors: {}
     });
+    
+    // Restore filters
+    this.restoreFilters();
   };
 
-   cancelEditStock = () => {
+  cancelEditStock = () => {
     this.setState({
       showEditModal: false,
-      
+      updateStock: null
     });
-    this.getStocks();
+    
+    // Restore filters and reload data
+    this.restoreFilters();
+    this.reloadStocksWithFilters();
   };
 
   // Delete stock functionality
   handleDeleteStock = (stock) => {
+    // Save filters before opening modal
+    this.saveCurrentFilters();
+    
     this.setState({
       showDeleteModal: true,
       stockToDelete: stock,
@@ -388,11 +452,13 @@ export class StockIndex extends Component {
         deleting: false,
         showDeleteModal: false,
         stockToDelete: null,
-      }, () => {
-        this.getStocks();
       });
 
       this.showToast("Stock deleted successfully!");
+      
+      // Restore filters and reload data
+      this.restoreFilters();
+      this.reloadStocksWithFilters();
 
     } catch (error) {
       console.error("Error deleting stock:", error);
@@ -406,10 +472,16 @@ export class StockIndex extends Component {
       showDeleteModal: false,
       stockToDelete: null,
     });
+    
+    // Restore filters
+    this.restoreFilters();
   };
 
   // Move stock functionality
   handleMoveStock = (stock) => {
+    // Save filters before opening modal
+    this.saveCurrentFilters();
+    
     const maxMoveQuantity = stock.in_stock;
     const branchOptions = this.state.branches
       .filter(branch => branch.id !== parseInt(this.state.branch_id))
@@ -477,11 +549,13 @@ export class StockIndex extends Component {
         stockToMove: null,
         selectedToBranch: null,
         moveQuantity: 0,
-      }, () => {
-        this.getStocks();
       });
 
       this.showToast(`Successfully moved ${moveQuantity} units to ${selectedToBranch.label}`);
+      
+      // Restore filters and reload data
+      this.restoreFilters();
+      this.reloadStocksWithFilters();
 
     } catch (error) {
       console.error("Error moving stock:", error);
@@ -497,6 +571,9 @@ export class StockIndex extends Component {
       selectedToBranch: null,
       moveQuantity: 0,
     });
+    
+    // Restore filters
+    this.restoreFilters();
   };
 
   sleep = (ms) =>
@@ -572,35 +649,49 @@ export class StockIndex extends Component {
   };
 
   toggleCloseBarcode = () => {
-    this.setState({ editBarcode: !this.state.editBarcode });
-    this.getStocks();
+    this.setState({ editBarcode: null });
+    // Restore filters and reload data
+    this.restoreFilters();
+    this.reloadStocksWithFilters();
   };
 
   toggleCloseEditPrice = () => {
-    this.setState({ editPrice: !this.state.editPrice });
-    this.getStocks();
+    this.setState({ editPrice: null });
+    // Restore filters and reload data
+    this.restoreFilters();
+    this.reloadStocksWithFilters();
   };
 
   toggleUpdateBarcode = (editBarcode) => {
+    // Save filters before opening modal
+    this.saveCurrentFilters();
     this.setState({ editBarcode });
   };
 
   toggleUpdatePrice = (editPrice) => {
+    // Save filters before opening modal
+    this.saveCurrentFilters();
     this.setState({ editPrice });
   };
 
   toggleCloseUpdateStock = () => {
-    this.setState({ updateStock: !this.state.updateStock });
-    this.getStocks();
+    this.setState({ 
+      updateStock: null,
+      showEditModal: false 
+    });
+    // Restore filters and reload data
+    this.restoreFilters();
+    this.reloadStocksWithFilters();
   };
 
   toggleUpdateStock = (updateStock) => {
-    
-    this.setState({showEditModal:true})
-    this.setState({ updateStock });
+    // Save filters before opening modal
+    this.saveCurrentFilters();
+    this.setState({
+      showEditModal: true,
+      updateStock
+    });
   };
-
-
 
   // Clear all filters
   clearAllFilters = () => {
@@ -609,6 +700,14 @@ export class StockIndex extends Component {
       selectedProduct: null,
       start_date: "",
       end_date: "",
+      previousFilters: {
+        order: "",
+        selectedProduct: null,
+        start_date: "",
+        end_date: "",
+        search: "",
+        page: 1
+      }
     }, () => {
       this.getStocks();
     });
@@ -1228,7 +1327,14 @@ export class StockIndex extends Component {
           //onStockCreated={reloadStockData}
         />
 
-        <EditStock currentBranch={currentBranch} show={showEditModal} stock={updateStock} products={allProducts} onClose={this.cancelEditStock}  onProductsUpdate={this.handleProductsUpdate} />
+        <EditStock 
+          currentBranch={currentBranch} 
+          show={showEditModal} 
+          stock={updateStock} 
+          products={allProducts} 
+          onClose={this.cancelEditStock}  
+          onProductsUpdate={this.handleProductsUpdate} 
+        />
 
         <MoveStockModal
           show={showMoveModal}
