@@ -156,12 +156,10 @@ export class AddClient extends Component {
                 <Col md={6} className="mb-3">
                   <Form.Group id="Name">
                     <Form.Label>Name</Form.Label>
-                    <Form.Control
+                    <input
                       placeholder="Enter Name"
                       type="text"
-                      onChange={async (e) => {
-                        await this.onChange(e.target.value, "name");
-                      }}
+                    
                     />
                   </Form.Group>
                 </Col>
