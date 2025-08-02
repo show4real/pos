@@ -190,37 +190,37 @@ export class InvoiceIndex extends Component {
 
   loadClients =
     (data) =>
-    async (search, loadedOptions, { page }) => {
-      await this.sleep(1000);
-      const { rows } = this.state;
-      await this.getClients(page, search);
-      console.log(data);
-      //const new_data = {data}
-      let new_clients = [{ label: "All Clients", value: "" }, ...data];
-      return {
-        options: new_clients,
-        hasMore: data.length >= 10,
-        additional: {
-          page: search ? 2 : page + 1,
-        },
+      async (search, loadedOptions, { page }) => {
+        await this.sleep(1000);
+        const { rows } = this.state;
+        await this.getClients(page, search);
+        console.log(data);
+        //const new_data = {data}
+        let new_clients = [{ label: "All Clients", value: "" }, ...data];
+        return {
+          options: new_clients,
+          hasMore: data.length >= 10,
+          additional: {
+            page: search ? 2 : page + 1,
+          },
+        };
       };
-    };
 
   loadCashiers =
     (data) =>
-    async (search, prevOptions, { page }) => {
-      await this.sleep(1000);
-      const { rows } = this.state;
-      await this.getCashiers(rows, page, search);
-      let new_cashiers = [{ label: "All Cashiers", value: "" }, ...data];
-      return {
-        options: new_cashiers,
-        hasMore: data.length >= 1,
-        additional: {
-          page: search ? 2 : page + 1,
-        },
+      async (search, prevOptions, { page }) => {
+        await this.sleep(1000);
+        const { rows } = this.state;
+        await this.getCashiers(rows, page, search);
+        let new_cashiers = [{ label: "All Cashiers", value: "" }, ...data];
+        return {
+          options: new_cashiers,
+          hasMore: data.length >= 1,
+          additional: {
+            page: search ? 2 : page + 1,
+          },
+        };
       };
-    };
 
   getInvoices = () => {
     const {
@@ -457,7 +457,7 @@ export class InvoiceIndex extends Component {
               </span>
             </h5>
           </Col>
-          <Col md={3}>
+          {user.admin == 1 && <><Col md={3}>
             <ReactDatetime
               value={setFiltering === false ? fromdate : todate}
               dateFormat={"MMM D, YYYY"}
@@ -481,27 +481,27 @@ export class InvoiceIndex extends Component {
             />
           </Col>
 
-          <Col md={3}>
-            <ReactDatetime
-              value={todate}
-              dateFormat={"MMM D, YYYY"}
-              closeOnSelect
-              onChange={(e) => this.onFilter(e, "todate")}
-              inputProps={{
-                required: true,
-                className: "form-control date-filter",
-              }}
-              isValidDate={(current) => {
-                return (
-                  (current.isAfter(fromdate) || current.isSame(fromdate)) &&
-                  current.isBefore(moment())
-                );
-              }}
-              timeFormat={false}
-            />
-            -
-          </Col>
-
+            <Col md={3}>
+              <ReactDatetime
+                value={todate}
+                dateFormat={"MMM D, YYYY"}
+                closeOnSelect
+                onChange={(e) => this.onFilter(e, "todate")}
+                inputProps={{
+                  required: true,
+                  className: "form-control date-filter",
+                }}
+                isValidDate={(current) => {
+                  return (
+                    (current.isAfter(fromdate) || current.isSame(fromdate)) &&
+                    current.isBefore(moment())
+                  );
+                }}
+                timeFormat={false}
+              />
+              -
+            </Col>
+          </>}
           <Col md="4" className="">
             <div style={{ display: "flex" }}>
               <Input
@@ -637,7 +637,8 @@ export class InvoiceIndex extends Component {
                           >
                             View
                           </Button>
-                          {invoice.payment_type == "POS" && (
+                          {invoice.payment_type == "POS" && user.admin == 1 && (
+
                             <Button
                               variant="outline-primary"
                               onClick={() => {

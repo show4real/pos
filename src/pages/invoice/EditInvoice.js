@@ -47,6 +47,7 @@ import Invoice from "./Invoice";
 import Invoice2 from "./Invoice2";
 import ReactToPrint from "react-to-print";
 import { InputNumber } from "antd";
+import TransactionPrintComponent from "../pos/TransactionPrintComponent";
 
 export class EditInvoice extends Component {
   constructor(props) {
@@ -377,6 +378,47 @@ export class EditInvoice extends Component {
       total_amount: total_amount,
     });
   }
+  formatNumber = (number) => {
+    if (number) {
+      return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+  };
+  handlePrint = () => {
+    const printContent = document.querySelector('.print-container');
+    const originalContent = document.body.innerHTML;
+
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Transaction Receipt</title>
+          <style>
+            @media print {
+              body { margin: 0; }
+              .print-content { display: block !important; }
+            }
+            @page {
+              size: A4;
+              margin: 0;
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent.innerHTML}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+
+    // Wait for content to load then print
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
 
   render() {
     const {
@@ -403,23 +445,63 @@ export class EditInvoice extends Component {
       total_balance,
       prev_balance,
     } = this.state;
+
+    var p_mode = pos_items.map(function (p) {
+      return p.payment_mode;
+    });
+    var transaction_date_time = pos_items.map(function (p) {
+      return p.created_at;
+    });
+    var cashier_name = pos_items.map(function (p) {
+      return p.cashier_name;
+    });
+    const transaction_total = pos_items
+      .map((p) => p.selling_price * p.qty_sold)
+      .reduce((prev, curr) => prev + curr, 0);
     return (
       <>
         {loading && <SpinDiv text={"Loading..."} />}
 
+
+
         {invoice && (
           <div style={{ display: "none" }}>
-            <Invoice2
+
+
+            <Invoice
               pos_items={pos_items}
-              items={items}
               invoice={invoice}
               company={company}
-              user={user}
               total_balance={total_balance}
               prev_balance={prev_balance}
+              delivery_fee={invoice.delivery_fee}
+              discount={invoice.discount}
+              discount_percent={invoice.discount_percent}
+              user={user}
               ref={(el) => (this.componentRef2 = el)}
-              toggle={() => this.setState({ invoice: [] })}
+              toggle={() => this.setState({ invoice: {} })}
             />
+
+            <TransactionPrintComponent
+              transaction_detail={pos_items}
+              company={company}
+              invoice_data={invoice}
+              transaction_id={invoice.transaction_id}
+              transaction_date_time={transaction_date_time[0]}
+              payment_mode={p_mode[0]}
+              cashier_name={cashier_name[0]}
+              transaction_total={(transaction_total + invoice.delivery_fee) - invoice.discount}
+              balance={invoice.balance}
+              prev_balance={prev_balance}
+              total_balance={total_balance}
+              delivery_fee={invoice.delivery_fee}
+              discount={invoice.discount}
+              discount_percent={invoice.discount_percent}
+              formatNumber={this.formatNumber}
+            />
+
+
+
           </div>
         )}
 
@@ -450,712 +532,734 @@ export class EditInvoice extends Component {
             toggle={() => this.setState({ payment: null })}
           />
         )}
-      {/* Header with Breadcrumb and Actions */}
-  <Row className="mb-4">
-    <Col lg="12">
-      <div className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4 border-bottom">
-        <div className="d-block mb-4 mb-md-0">
-          <Breadcrumb listProps={{ className: "breadcrumb-text-dark text-primary mb-0" }}>
-            <Breadcrumb.Item href="/" className="text-muted">Home</Breadcrumb.Item>
-            <Breadcrumb.Item href="/invoices" className="text-primary fw-semibold">Invoices</Breadcrumb.Item>
-          </Breadcrumb>
-        </div>
-        <div className="btn-toolbar mb-2 mb-md-0">
-          {!hideNav && (
-            <ButtonGroup className="gap-2">
-              {(user.admin === 1 || user.id === invoice.cashier_id) && (
-                <Button
-                  variant="outline-primary"
-                  size="sm"
-                  onClick={() => this.toggleAddPayment()}
-                  className="d-flex align-items-center gap-2"
-                >
-                  <i className="fa fa-plus" />
-                  New Payment
-                </Button>
-              )}
-
-              <Button
-                variant="outline-primary"
-                size="sm"
-                onClick={() => {
-                  this.props.history.push("/new/invoice");
-                }}
-                className="d-flex align-items-center gap-2"
-              >
-                <i className="fa fa-plus" />
-                New Invoice
-              </Button>
-
-              {Object.keys(invoice).length !== 0 ? (
-                <ReactToPrint
-                  trigger={() => {
-                    return (
-                      <Button
-                        variant="outline-success"
-                        size="sm"
-                        className="d-flex align-items-center gap-2"
-                      >
-                        <i className="fa fa-print" />
-                        Print Invoice
-                      </Button>
-                    );
-                  }}
-                  content={() => this.componentRef2}
-                />
-              ) : null}
-            </ButtonGroup>
-          )}
-        </div>
-      </div>
-    </Col>
-  </Row>
-
-  {/* Main Invoice Card */}
-  <Card className="border-0 shadow-sm mb-4">
-    <Card.Body className="p-4">
-      
-      {/* Invoice Summary Row */}
-      <Row className="mb-4">
-        <Col md={12}>
-          <Row className="mb-3 p-3 bg-light rounded">
-            <Col md={2}>
-              {(user.admin === 1 || user.id === invoice.cashier_id) &&
-                invoice.payment_type === "MANUAL" &&
-                payments.length <= 1 && (
-                <Button
-                  variant={edit ? "outline-danger" : "outline-success"}
-                  onClick={this.toggleEdit}
-                  size="sm"
-                  className="d-flex align-items-center gap-2"
-                >
-                  <i className={`fa ${edit ? 'fa-times' : 'fa-edit'}`} />
-                  {edit ? "Discard Changes" : "Edit Invoice"}
-                </Button>
-              )}
-            </Col>
-            <Col md={3}>
-              <div className="text-center">
-                <div className="fs-6 fw-bold text-primary">Invoice Amount</div>
-                <div className="fs-5 fw-bold text-dark">
-                  <span className="text-muted">{invoice.currency}</span>
-                  {this.formatCurrency(invoice.amount)}
-                </div>
+        {/* Header with Breadcrumb and Actions */}
+        <Row className="mb-4">
+          <Col lg="12">
+            <div className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4 border-bottom">
+              <div className="d-block mb-4 mb-md-0">
+                <Breadcrumb listProps={{ className: "breadcrumb-text-dark text-primary mb-0" }}>
+                  <Breadcrumb.Item href="/" className="text-muted">Home</Breadcrumb.Item>
+                  <Breadcrumb.Item href="/invoices" className="text-primary fw-semibold">Invoices</Breadcrumb.Item>
+                </Breadcrumb>
               </div>
-            </Col>
-            <Col md={3}>
-              <div className="text-center">
-                <div className="fs-6 fw-bold text-success">Paid</div>
-                <div className="fs-5 fw-bold text-dark">
-                  <span className="text-muted">{invoice.currency}</span>
-                  {this.formatCurrency(invoice.total_payment)}
-                </div>
-              </div>
-            </Col>
-            <Col md={4}>
-              <div className="text-center">
-                <div className="fs-6 fw-bold text-warning">Invoice Balance</div>
-                <div className="fs-5 fw-bold text-dark">
-                  <span className="text-muted">{invoice.currency}</span>
-                  {this.formatCurrency(invoice.balance)}
-                </div>
-              </div>
-            </Col>
-          </Row>
-          
-          <Row className="mb-3 p-3 bg-light rounded">
-            <Col md={4}>
-              <div className="text-center">
-                <div className="fs-6 fw-bold text-info">Previous Client Balance</div>
-                <div className="fs-6 fw-bold text-dark">
-                  <span className="text-muted">{invoice.currency}</span>
-                  {this.formatCurrency(prev_balance)}
-                </div>
-              </div>
-            </Col>
-            <Col md={4}>
-              <div className="text-center">
-                <div className="fs-6 fw-bold text-danger">Total Client Balance</div>
-                <div className="fs-6 fw-bold text-dark">
-                  <span className="text-muted">{invoice.currency}</span>
-                  {this.formatCurrency(total_balance)}
-                </div>
-              </div>
-            </Col>
-            <Col md={4}>
-              <div className="text-center">
-                <div className="fs-6 fw-bold text-secondary">Cashier</div>
-                <div className="fs-6 fw-bold text-dark">{invoice.cashier_name}</div>
-              </div>
-            </Col>
-          </Row>
-
-          {/* Invoice Details Form */}
-          <Card className="border mb-4">
-            <Card.Body>
-              <Row>
-                <Col md={3} className="mb-3">
-                  <Form.Group>
-                    <Form.Label className="fw-semibold">Invoice No</Form.Label>
-                    <InputGroup>
-                      <InputGroup.Text className="bg-light">
-                        <FontAwesomeIcon icon={faPencilAlt} />
-                      </InputGroup.Text>
-                      <Input
-                        type="text"
-                        name="invoice_no"
-                        disabled
-                        value={invoice.invoice_no || ""}
-                        onChange={async (e) => {
-                          await this.onChange(e.target.value, "invoice_no");
-                        }}
-                        className="form-control"
-                      />
-                    </InputGroup>
-                  </Form.Group>
-                </Col>
-
-                <Col md="3" className="mb-3">
-                  <FormGroup>
-                    <Form.Label className="fw-semibold">Date</Form.Label>
-                    <ReactDatetime
-                      value={moment(invoice.issued_date).format("MMM DD, YYYY") || ""}
-                      disabled={!edit}
-                      dateFormat={"MMM D, YYYY"}
-                      closeOnSelect
-                      onChange={(e) => this.onChange(e, "issued_date")}
-                      inputProps={{
-                        required: true,
-                        className: "form-control",
-                      }}
-                      timeFormat={false}
-                    />
-                  </FormGroup>
-                </Col>
-
-                <Col md="3" className="mb-3">
-                  <FormGroup>
-                    <Form.Label className="fw-semibold">Due Date</Form.Label>
-                    <ReactDatetime
-                      value={moment(invoice.due_date).format("MMM DD, YYYY") || ""}
-                      dateFormat={"MMM D, YYYY"}
-                      closeOnSelect
-                      onChange={(e) => this.onChange(e, "due_date")}
-                      inputProps={{
-                        required: true,
-                        className: "form-control",
-                      }}
-                      timeFormat={false}
-                      disabled={!edit}
-                    />
-                  </FormGroup>
-                </Col>
-
-                <Col md={3} className="mb-3">
-                  <Form.Group>
-                    <Form.Label className="fw-semibold">Total Purchase</Form.Label>
-                    <InputGroup>
-                      <Input
-                        type="text"
-                        value={invoice.currency + this.formatCurrency(this.totalCost() + ".00")}
-                        disabled
-                        className="form-control bg-light"
-                      />
-                    </InputGroup>
-                  </Form.Group>
-                </Col>
-              </Row>
-            </Card.Body>
-          </Card>
-
-          {/* Payment Details Form */}
-          <Card className="border mb-4">
-            <Card.Body>
-              <Row>
-                <Col md={5} className="mb-3">
-                  <Form.Group>
-                    <Form.Label className="fw-semibold">Amount Received</Form.Label>
-                    <InputGroup>
-                      
-                      <InputNumber
-                        style={{
-                          width: "100%",
-                          height: 40,
-                          paddingTop: 5,
-                          borderRadius: 5,
-                          fontSize: 16,
-                        }}
-                        formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                        parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
-                        onKeyPress={(event) => {
-                          if (!/[0-9]/.test(event.key)) {
-                            event.preventDefault();
-                          }
-                        }}
-                        disabled
-                        value={invoice.total_payment}
-                        onChange={(e) => this.onChange(e, "amount_paid")}
-                      />
-                    </InputGroup>
-                  </Form.Group>
-                </Col>
-
-                <Col md={4} className="mb-3">
-                  <Form.Group>
-                    <Form.Label className="fw-semibold">Clients</Form.Label>
-                    <Form.Select
-                      onChange={async (e) => {
-                        await this.onChange(e.target.value, "client_id");
-                      }}
-                      value={invoice.client_id}
-                      disabled={!edit}
-                      className="form-select"
-                    >
-                      <option value="">Select Client</option>
-                      {clients.length === 0 && ""}
-                      {clients.map((p, index) => (
-                        <option value={p.id} key={index}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-                </Col>
-
-                <Col md={3} className="mb-3 d-flex align-items-end">
-                  <Button
-                    variant="outline-primary"
-                    size="sm"
-                    disabled={!edit}
-                    onClick={() => this.toggleAddClient()}
-                    className="d-flex align-items-center gap-2"
-                  >
-                    <i className="fa fa-plus" />
-                    New Client
-                  </Button>
-                </Col>
-              </Row>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Items Section */}
-      <Card className="border mb-4">
-        <Card.Header className="bg-primary text-white">
-          <h5 className="mb-0 fw-semibold">ITEMS</h5>
-        </Card.Header>
-        <Card.Body>
-          {items.length > 0 &&
-            items.map((item, key) => (
-              <Card key={key} className="border mb-3">
-                <Card.Body>
-                  <Row>
-                    <Col md={3} className="mb-3">
-                      <Form.Group>
-                        <Form.Label className="fw-semibold">Description</Form.Label>
-                        <InputGroup>
-                          <InputGroup.Text className="bg-light">
-                            <FontAwesomeIcon icon={faPencilAlt} />
-                          </InputGroup.Text>
-                          <Input
-                            type="text"
-                            disabled={!edit}
-                            placeholder={`Item description ${key + 1}`}
-                            value={item.description}
-                            onChange={(e) => this.handleInputChange(e, key)}
-                            name="description"
-                            className="form-control"
-                          />
-                        </InputGroup>
-                        {submitted && !item.description && (
-                          <div className="text-danger small mt-1">Description is required</div>
-                        )}
-                      </Form.Group>
-                    </Col>
-
-                    <Col md={2} className="mb-3">
-                      <Form.Group>
-                        <Form.Label className="fw-semibold">Quantity</Form.Label>
-                        <InputGroup>
-                          <InputGroup.Text className="bg-light">
-                            <FontAwesomeIcon icon={faPencilAlt} />
-                          </InputGroup.Text>
-                          <Input
-                            type="text"
-                            disabled={!edit}
-                            name="quantity"
-                            placeholder={`Qty ${key + 1}`}
-                            value={item.quantity}
-                            onChange={(e) => this.handleInputNumericChange(e, key)}
-                            className="form-control"
-                          />
-                        </InputGroup>
-                        {submitted && !item.quantity && (
-                          <div className="text-danger small mt-1">Quantity is required</div>
-                        )}
-                      </Form.Group>
-                    </Col>
-
-                    <Col md={2} className="mb-3">
-                      <Form.Group>
-                        <Form.Label className="fw-semibold">Price</Form.Label>
-                        <InputGroup>
-                          <InputGroup.Text className="bg-light">
-                            <FontAwesomeIcon icon={faPencilAlt} />
-                          </InputGroup.Text>
-                          <Input
-                            type="text"
-                            disabled={!edit}
-                            placeholder={`Price ${key + 1}`}
-                            value={item.rate}
-                            onChange={(e) => this.handleInputNumericChange(e, key)}
-                            name="rate"
-                            className="form-control"
-                          />
-                        </InputGroup>
-                        {submitted && !item.rate && (
-                          <div className="text-danger small mt-1">Price is required</div>
-                        )}
-                      </Form.Group>
-                    </Col>
-
-                    <Col md={3} className="mb-3">
-                      <Form.Group>
-                        <Form.Label className="fw-semibold">Amount</Form.Label>
-                        <InputGroup>
-                          <Input
-                            disabled
-                            type="text"
-                            value={item.quantity * item.rate}
-                            className="form-control bg-light fw-bold"
-                          />
-                        </InputGroup>
-                      </Form.Group>
-                    </Col>
-
-                    <Col md={2} className="mb-3 d-flex flex-column">
-                      <Form.Label className="fw-semibold">Actions</Form.Label>
-                      <ButtonGroup>
-                        {items.length && items.length - 1 === key && (
-                          <Button
-                            variant="outline-success"
-                            size="sm"
-                            disabled={!edit}
-                            onClick={this.handleAddItem}
-                            title="Add Item"
-                          >
-                            <i className="fa fa-plus" />
-                          </Button>
-                        )}
-                        {items.length && items.length !== 1 && (
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            disabled={!edit}
-                            onClick={this.handleRemoveItem(key)}
-                            title="Remove Item"
-                          >
-                            <i className="fa fa-times" />
-                          </Button>
-                        )}
-                      </ButtonGroup>
-                    </Col>
-                  </Row>
-                </Card.Body>
-              </Card>
-            ))}
-
-          {pos_items.length > 0 &&
-            pos_items.map((item, key) => (
-              <Card key={key} className="border mb-3 bg-light">
-                <Card.Body>
-                  <Row>
-                    <Col md={3} className="mb-3">
-                      <Form.Group>
-                        <Form.Label className="fw-semibold">Description</Form.Label>
-                        <InputGroup>
-                          <InputGroup.Text className="bg-light">
-                            <FontAwesomeIcon icon={faPencilAlt} />
-                          </InputGroup.Text>
-                          <Input
-                            type="text"
-                            disabled={!edit}
-                            value={item.product_name}
-                            name="description"
-                            className="form-control"
-                          />
-                        </InputGroup>
-                      </Form.Group>
-                    </Col>
-
-                    <Col md={2} className="mb-3">
-                      <Form.Group>
-                        <Form.Label className="fw-semibold">Quantity</Form.Label>
-                        <InputGroup>
-                          <InputGroup.Text className="bg-light">
-                            <FontAwesomeIcon icon={faPencilAlt} />
-                          </InputGroup.Text>
-                          <Input
-                            type="text"
-                            disabled={!edit}
-                            name="quantity"
-                            value={item.qty_sold}
-                            onChange={(e) => this.handleInputNumericChange(e, key)}
-                            className="form-control"
-                          />
-                        </InputGroup>
-                      </Form.Group>
-                    </Col>
-
-                    <Col md={3} className="mb-3">
-                      <Form.Group>
-                        <Form.Label className="fw-semibold">Price</Form.Label>
-                        <InputGroup>
-                          <InputGroup.Text className="bg-light">
-                            <FontAwesomeIcon icon={faPencilAlt} />
-                          </InputGroup.Text>
-                          <Input
-                            type="text"
-                            disabled={!edit}
-                            value={item.selling_price}
-                            name="rate"
-                            className="form-control"
-                          />
-                        </InputGroup>
-                      </Form.Group>
-                    </Col>
-
-                    <Col md={3} className="mb-3">
-                      <Form.Group>
-                        <Form.Label className="fw-semibold">Amount</Form.Label>
-                        <InputGroup>
-                          <Input
-                            disabled
-                            type="text"
-                            value={item.qty_sold * item.selling_price}
-                            className="form-control bg-light fw-bold"
-                          />
-                        </InputGroup>
-                      </Form.Group>
-                    </Col>
-                  </Row>
-                </Card.Body>
-              </Card>
-            ))}
-
-          {/* Totals Section */}
-          <Row className="mt-4">
-            <Col md={8}></Col>
-            <Col md={4}>
-              <Card className="border-0 bg-light">
-                <Card.Body>
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="fw-semibold">Subtotal:</span>
-                    <span className="fw-bold">
-                      <span className="text-muted small">{invoice.currency}</span>
-                      {this.formatCurrency(invoice.amount)}
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="fw-semibold">Total Cost:</span>
-                    <span className="fw-bold">
-                      <span className="text-muted small">{invoice.currency}</span>
-                      {this.formatCurrency(invoice.amount)}
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="fw-semibold text-success">Amount Received:</span>
-                    <span className="fw-bold text-success">
-                      <span className="text-muted small">{invoice.currency}</span>
-                      {this.formatCurrency(invoice.total_payment)}
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="fw-semibold text-warning">Balance:</span>
-                    <span className="fw-bold text-warning">
-                      <span className="text-muted small">{invoice.currency}</span>
-                      {this.formatCurrency(invoice.total_balance)}
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="fw-semibold text-info">Prev Balance:</span>
-                    <span className="fw-bold text-info">
-                      <span className="text-muted small">{invoice.currency}</span>
-                      {this.formatCurrency(prev_balance)}
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between align-items-center mb-3 border-top pt-2">
-                    <span className="fw-bold text-danger">Total Balance:</span>
-                    <span className="fw-bold text-danger fs-5">
-                      <span className="text-muted small">{invoice.currency}</span>
-                      {this.formatCurrency(total_balance)}
-                    </span>
-                  </div>
-                  {edit && (
-                    <div className="d-grid">
-                      <Button
-                        variant="primary"
-                        size="lg"
-                        disabled={saving}
-                        onClick={this.onSaveInvoice}
-                        className="d-flex align-items-center justify-content-center gap-2"
-                      >
-                        {saving ? (
-                          <><i className="fa fa-spinner fa-spin" /> Updating...</>
-                        ) : (
-                          <><i className="fa fa-save" /> Update Invoice</>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
-
-      {/* Payments Section */}
-      {hideNav === true ? (
-        <Card className="border mb-4">
-          <Card.Header className="bg-success text-white">
-            <h5 className="mb-0 fw-semibold">Payments</h5>
-          </Card.Header>
-          <Card.Body>
-            {payments.map((payment, key) => (
-              <Card key={key} className="border mb-3">
-                <Card.Header className="bg-light">
-                  <h6 className="mb-0 fw-semibold">{this.ordinal(key + 1)} Payment</h6>
-                </Card.Header>
-                <Card.Body>
-                  <Row>
-                    <Col md={3} className="mb-3">
-                      <Form.Group>
-                        <Form.Label className="fw-semibold">Invoice No</Form.Label>
-                        <Input value={payment.invoice_num} disabled className="form-control bg-light" />
-                      </Form.Group>
-                    </Col>
-                    <Col md={3} className="mb-3">
-                      <Form.Group>
-                        <Form.Label className="fw-semibold">Amount</Form.Label>
-                        <Input
-                          value={`${invoice.currency}${this.formatCurrency(payment.amount)}`}
-                          disabled
-                          className="form-control bg-light"
-                        />
-                      </Form.Group>
-                    </Col>
-                    <Col md={3} className="mb-3">
-                      <Form.Group>
-                        <Form.Label className="fw-semibold">Paid</Form.Label>
-                        <Input
-                          value={`${invoice.currency}${this.formatCurrency(payment.amount_paid)}`}
-                          disabled
-                          className="form-control bg-light"
-                        />
-                      </Form.Group>
-                    </Col>
-                    <Col md={3} className="mb-3">
-                      <Form.Group>
-                        <Form.Label className="fw-semibold">Transaction Date</Form.Label>
-                        <Input
-                          value={moment(payment.created_at).format("MMM DD YYYY")}
-                          disabled
-                          className="form-control bg-light"
-                        />
-                      </Form.Group>
-                    </Col>
-                  </Row>
-                  {user.admin === 1 && payments.length >= 1 && (
-                    <div className="d-flex justify-content-end">
+              <div className="btn-toolbar mb-2 mb-md-0">
+                {!hideNav && (
+                  <ButtonGroup className="gap-2">
+                    {(user.admin === 1 || user.id === invoice.cashier_id) && (
                       <Button
                         variant="outline-primary"
-                        onClick={() => this.toggleEditPayment(payment)}
                         size="sm"
+                        onClick={() => this.toggleAddPayment()}
                         className="d-flex align-items-center gap-2"
                       >
-                        <i className="fa fa-edit" />
-                        Edit
+                        <i className="fa fa-plus" />
+                        New Payment
                       </Button>
+                    )}
+
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      onClick={() => {
+                        this.props.history.push("/new/invoice");
+                      }}
+                      className="d-flex align-items-center gap-2"
+                    >
+                      <i className="fa fa-plus" />
+                      New Invoice
+                    </Button>
+
+                    {Object.keys(invoice).length !== 0 ? (
+                      <ReactToPrint
+                        trigger={() => {
+                          return (
+                            <Button
+                              variant="outline-success"
+                              size="sm"
+                              className="d-flex align-items-center gap-2"
+                            >
+                              <i className="fa fa-print" />
+                              Print Invoice
+                            </Button>
+                          );
+                        }}
+                        content={() => this.componentRef2}
+                      />
+                    ) : null}
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      onClick={this.handlePrint}
+                    >
+                      <i className="fas fa-print me-2"></i>
+                      Print A4 Receipt
+                    </Button>
+                  </ButtonGroup>
+                )}
+              </div>
+            </div>
+          </Col>
+        </Row>
+
+        {/* Main Invoice Card */}
+        <Card className="border-0 shadow-sm mb-4">
+          <Card.Body className="p-4">
+
+            {/* Invoice Summary Row */}
+            <Row className="mb-4">
+              <Col md={12}>
+                <Row className="mb-3 p-3 bg-light rounded">
+                  <Col md={2}>
+                    {(user.admin === 1 || user.id === invoice.cashier_id) &&
+                      invoice.payment_type === "MANUAL" &&
+                      payments.length <= 1 && (
+                        <Button
+                          variant={edit ? "outline-danger" : "outline-success"}
+                          onClick={this.toggleEdit}
+                          size="sm"
+                          className="d-flex align-items-center gap-2"
+                        >
+                          <i className={`fa ${edit ? 'fa-times' : 'fa-edit'}`} />
+                          {edit ? "Discard Changes" : "Edit Invoice"}
+                        </Button>
+                      )}
+                  </Col>
+                  <Col md={3}>
+                    <div className="text-center">
+                      <div className="fs-6 fw-bold text-primary">Invoice Amount</div>
+                      <div className="fs-5 fw-bold text-dark">
+                        <span className="text-muted">{invoice.currency}</span>
+                        {this.formatCurrency(invoice.amount)}
+                      </div>
                     </div>
-                  )}
-                </Card.Body>
-              </Card>
-            ))}
-          </Card.Body>
-        </Card>
-      ) : (
-        <Card className="border-0 shadow-sm">
-          <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center">
-            <h5 className="mb-0 fw-semibold">Payments History</h5>
-          </Card.Header>
-          <Card.Body className="p-0">
-            <div className="table-responsive">
-              <Table className="table-hover mb-0">
-                <thead className="bg-light">
-                  <tr>
-                    <th className="border-0 py-3 px-4 fw-semibold">Invoice No</th>
-                    <th className="border-0 py-3 px-4 fw-semibold">Amount</th>
-                    <th className="border-0 py-3 px-4 fw-semibold">Paid</th>
-                    <th className="border-0 py-3 px-4 fw-semibold">Transaction Date</th>
-                    <th className="border-0 py-3 px-4 fw-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payments.map((payment, key) => (
-                    <tr key={key} className="border-bottom">
-                      <td className="py-3 px-4 fw-semibold">{payment.invoice_num}</td>
-                      <td className="py-3 px-4">
-                        <span className="text-muted small">{invoice.currency}</span>
-                        <span className="fw-bold">{this.formatCurrency(payment.amount)}</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="text-muted small">{invoice.currency}</span>
-                        <span className="fw-bold text-success">{this.formatCurrency(payment.amount_paid)}</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        {moment(payment.created_at).format("MMM DD YYYY")}
-                      </td>
-                      <td className="py-3 px-4">
-                        {user.admin === 1 && payments.length >= 1 && (
-                          <Button
-                            variant="outline-primary"
-                            onClick={() => this.toggleEditPayment(payment)}
-                            size="sm"
-                            className="d-flex align-items-center gap-2"
-                          >
-                            <i className="fa fa-edit" />
-                            Edit
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  <tr className="bg-light border-top-2">
-                    <td colSpan={2} className="py-3 px-4"></td>
-                    <td className="py-3 px-4">
-                      <div className="fw-bold text-success">
-                        Total Payments: <span className="text-muted small">{invoice.currency}</span>
+                  </Col>
+                  <Col md={3}>
+                    <div className="text-center">
+                      <div className="fs-6 fw-bold text-success">Paid</div>
+                      <div className="fs-5 fw-bold text-dark">
+                        <span className="text-muted">{invoice.currency}</span>
                         {this.formatCurrency(invoice.total_payment)}
                       </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="fw-bold text-warning">
-                        Balance: <span className="text-muted small">{invoice.currency}</span>
-                        {this.formatCurrency(invoice.total_balance)}
+                    </div>
+                  </Col>
+                  <Col md={4}>
+                    <div className="text-center">
+                      <div className="fs-6 fw-bold text-warning">Invoice Balance</div>
+                      <div className="fs-5 fw-bold text-dark">
+                        <span className="text-muted">{invoice.currency}</span>
+                        {this.formatCurrency(invoice.balance)}
                       </div>
-                    </td>
-                    <td className="py-3 px-4"></td>
-                  </tr>
-                </tbody>
-              </Table>
-            </div>
+                    </div>
+                  </Col>
+                </Row>
+
+                <Row className="mb-3 p-3 bg-light rounded">
+                  <Col md={4}>
+                    <div className="text-center">
+                      <div className="fs-6 fw-bold text-info">Previous Client Balance</div>
+                      <div className="fs-6 fw-bold text-dark">
+                        <span className="text-muted">{invoice.currency}</span>
+                        {this.formatCurrency(prev_balance)}
+                      </div>
+                    </div>
+                  </Col>
+                  <Col md={4}>
+                    <div className="text-center">
+                      <div className="fs-6 fw-bold text-danger">Total Client Balance</div>
+                      <div className="fs-6 fw-bold text-dark">
+                        <span className="text-muted">{invoice.currency}</span>
+                        {this.formatCurrency(total_balance)}
+                      </div>
+                    </div>
+                  </Col>
+                  <Col md={4}>
+                    <div className="text-center">
+                      <div className="fs-6 fw-bold text-secondary">Cashier</div>
+                      <div className="fs-6 fw-bold text-dark">{invoice.cashier_name}</div>
+                    </div>
+                  </Col>
+                </Row>
+
+                {/* Invoice Details Form */}
+                <Card className="border mb-4">
+                  <Card.Body>
+                    <Row>
+                      <Col md={3} className="mb-3">
+                        <Form.Group>
+                          <Form.Label className="fw-semibold">Invoice No</Form.Label>
+                          <InputGroup>
+                            <InputGroup.Text className="bg-light">
+                              <FontAwesomeIcon icon={faPencilAlt} />
+                            </InputGroup.Text>
+                            <Input
+                              type="text"
+                              name="invoice_no"
+                              disabled
+                              value={invoice.invoice_no || ""}
+                              onChange={async (e) => {
+                                await this.onChange(e.target.value, "invoice_no");
+                              }}
+                              className="form-control"
+                            />
+                          </InputGroup>
+                        </Form.Group>
+                      </Col>
+
+                      <Col md="3" className="mb-3">
+                        <FormGroup>
+                          <Form.Label className="fw-semibold">Date</Form.Label>
+                          <ReactDatetime
+                            value={moment(invoice.issued_date).format("MMM DD, YYYY") || ""}
+                            disabled={!edit}
+                            dateFormat={"MMM D, YYYY"}
+                            closeOnSelect
+                            onChange={(e) => this.onChange(e, "issued_date")}
+                            inputProps={{
+                              required: true,
+                              className: "form-control",
+                            }}
+                            timeFormat={false}
+                          />
+                        </FormGroup>
+                      </Col>
+
+                      <Col md="3" className="mb-3">
+                        <FormGroup>
+                          <Form.Label className="fw-semibold">Due Date</Form.Label>
+                          <ReactDatetime
+                            value={moment(invoice.due_date).format("MMM DD, YYYY") || ""}
+                            dateFormat={"MMM D, YYYY"}
+                            closeOnSelect
+                            onChange={(e) => this.onChange(e, "due_date")}
+                            inputProps={{
+                              required: true,
+                              className: "form-control",
+                            }}
+                            timeFormat={false}
+                            disabled={!edit}
+                          />
+                        </FormGroup>
+                      </Col>
+
+                      <Col md={3} className="mb-3">
+                        <Form.Group>
+                          <Form.Label className="fw-semibold">Total Purchase</Form.Label>
+                          <InputGroup>
+                            <Input
+                              type="text"
+                              value={invoice.currency + this.formatCurrency(this.totalCost() + ".00")}
+                              disabled
+                              className="form-control bg-light"
+                            />
+                          </InputGroup>
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                  </Card.Body>
+                </Card>
+
+                {/* Payment Details Form */}
+                <Card className="border mb-4">
+                  <Card.Body>
+                    <Row>
+                      <Col md={5} className="mb-3">
+                        <Form.Group>
+                          <Form.Label className="fw-semibold">Amount Received</Form.Label>
+                          <InputGroup>
+
+                            <InputNumber
+                              style={{
+                                width: "100%",
+                                height: 40,
+                                paddingTop: 5,
+                                borderRadius: 5,
+                                fontSize: 16,
+                              }}
+                              formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                              parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+                              onKeyPress={(event) => {
+                                if (!/[0-9]/.test(event.key)) {
+                                  event.preventDefault();
+                                }
+                              }}
+                              disabled
+                              value={invoice.total_payment}
+                              onChange={(e) => this.onChange(e, "amount_paid")}
+                            />
+                          </InputGroup>
+                        </Form.Group>
+                      </Col>
+
+                      <Col md={4} className="mb-3">
+                        <Form.Group>
+                          <Form.Label className="fw-semibold">Clients</Form.Label>
+                          <Form.Select
+                            onChange={async (e) => {
+                              await this.onChange(e.target.value, "client_id");
+                            }}
+                            value={invoice.client_id}
+                            disabled={!edit}
+                            className="form-select"
+                          >
+                            <option value="">Select Client</option>
+                            {clients.length === 0 && ""}
+                            {clients.map((p, index) => (
+                              <option value={p.id} key={index}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </Form.Select>
+                        </Form.Group>
+                      </Col>
+
+                      <Col md={3} className="mb-3 d-flex align-items-end">
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          disabled={!edit}
+                          onClick={() => this.toggleAddClient()}
+                          className="d-flex align-items-center gap-2"
+                        >
+                          <i className="fa fa-plus" />
+                          New Client
+                        </Button>
+                      </Col>
+                    </Row>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* Items Section */}
+            <Card className="border mb-4">
+              <Card.Header className="bg-primary text-white">
+                <h5 className="mb-0 fw-semibold">ITEMS</h5>
+              </Card.Header>
+              <Card.Body>
+                {items.length > 0 &&
+                  items.map((item, key) => (
+                    <Card key={key} className="border mb-3">
+                      <Card.Body>
+                        <Row>
+                          <Col md={3} className="mb-3">
+                            <Form.Group>
+                              <Form.Label className="fw-semibold">Description</Form.Label>
+                              <InputGroup>
+                                <InputGroup.Text className="bg-light">
+                                  <FontAwesomeIcon icon={faPencilAlt} />
+                                </InputGroup.Text>
+                                <Input
+                                  type="text"
+                                  disabled={!edit}
+                                  placeholder={`Item description ${key + 1}`}
+                                  value={item.description}
+                                  onChange={(e) => this.handleInputChange(e, key)}
+                                  name="description"
+                                  className="form-control"
+                                />
+                              </InputGroup>
+                              {submitted && !item.description && (
+                                <div className="text-danger small mt-1">Description is required</div>
+                              )}
+                            </Form.Group>
+                          </Col>
+
+                          <Col md={2} className="mb-3">
+                            <Form.Group>
+                              <Form.Label className="fw-semibold">Quantity</Form.Label>
+                              <InputGroup>
+                                <InputGroup.Text className="bg-light">
+                                  <FontAwesomeIcon icon={faPencilAlt} />
+                                </InputGroup.Text>
+                                <Input
+                                  type="text"
+                                  disabled={!edit}
+                                  name="quantity"
+                                  placeholder={`Qty ${key + 1}`}
+                                  value={item.quantity}
+                                  onChange={(e) => this.handleInputNumericChange(e, key)}
+                                  className="form-control"
+                                />
+                              </InputGroup>
+                              {submitted && !item.quantity && (
+                                <div className="text-danger small mt-1">Quantity is required</div>
+                              )}
+                            </Form.Group>
+                          </Col>
+
+                          <Col md={2} className="mb-3">
+                            <Form.Group>
+                              <Form.Label className="fw-semibold">Price</Form.Label>
+                              <InputGroup>
+                                <InputGroup.Text className="bg-light">
+                                  <FontAwesomeIcon icon={faPencilAlt} />
+                                </InputGroup.Text>
+                                <Input
+                                  type="text"
+                                  disabled={!edit}
+                                  placeholder={`Price ${key + 1}`}
+                                  value={item.rate}
+                                  onChange={(e) => this.handleInputNumericChange(e, key)}
+                                  name="rate"
+                                  className="form-control"
+                                />
+                              </InputGroup>
+                              {submitted && !item.rate && (
+                                <div className="text-danger small mt-1">Price is required</div>
+                              )}
+                            </Form.Group>
+                          </Col>
+
+                          <Col md={3} className="mb-3">
+                            <Form.Group>
+                              <Form.Label className="fw-semibold">Amount</Form.Label>
+                              <InputGroup>
+                                <Input
+                                  disabled
+                                  type="text"
+                                  value={item.quantity * item.rate}
+                                  className="form-control bg-light fw-bold"
+                                />
+                              </InputGroup>
+                            </Form.Group>
+                          </Col>
+
+                          <Col md={2} className="mb-3 d-flex flex-column">
+                            <Form.Label className="fw-semibold">Actions</Form.Label>
+                            <ButtonGroup>
+                              {items.length && items.length - 1 === key && (
+                                <Button
+                                  variant="outline-success"
+                                  size="sm"
+                                  disabled={!edit}
+                                  onClick={this.handleAddItem}
+                                  title="Add Item"
+                                >
+                                  <i className="fa fa-plus" />
+                                </Button>
+                              )}
+                              {items.length && items.length !== 1 && (
+                                <Button
+                                  variant="outline-danger"
+                                  size="sm"
+                                  disabled={!edit}
+                                  onClick={this.handleRemoveItem(key)}
+                                  title="Remove Item"
+                                >
+                                  <i className="fa fa-times" />
+                                </Button>
+                              )}
+                            </ButtonGroup>
+                          </Col>
+                        </Row>
+                      </Card.Body>
+                    </Card>
+                  ))}
+
+                {pos_items.length > 0 &&
+                  pos_items.map((item, key) => (
+                    <Card key={key} className="border mb-3 bg-light">
+                      <Card.Body>
+                        <Row>
+                          <Col md={3} className="mb-3">
+                            <Form.Group>
+                              <Form.Label className="fw-semibold">Description</Form.Label>
+                              <InputGroup>
+                                <InputGroup.Text className="bg-light">
+                                  <FontAwesomeIcon icon={faPencilAlt} />
+                                </InputGroup.Text>
+                                <Input
+                                  type="text"
+                                  disabled={!edit}
+                                  value={item.product_name}
+                                  name="description"
+                                  className="form-control"
+                                />
+                              </InputGroup>
+                            </Form.Group>
+                          </Col>
+
+                          <Col md={2} className="mb-3">
+                            <Form.Group>
+                              <Form.Label className="fw-semibold">Quantity</Form.Label>
+                              <InputGroup>
+                                <InputGroup.Text className="bg-light">
+                                  <FontAwesomeIcon icon={faPencilAlt} />
+                                </InputGroup.Text>
+                                <Input
+                                  type="text"
+                                  disabled={!edit}
+                                  name="quantity"
+                                  value={item.qty_sold}
+                                  onChange={(e) => this.handleInputNumericChange(e, key)}
+                                  className="form-control"
+                                />
+                              </InputGroup>
+                            </Form.Group>
+                          </Col>
+
+                          <Col md={3} className="mb-3">
+                            <Form.Group>
+                              <Form.Label className="fw-semibold">Price</Form.Label>
+                              <InputGroup>
+                                <InputGroup.Text className="bg-light">
+                                  <FontAwesomeIcon icon={faPencilAlt} />
+                                </InputGroup.Text>
+                                <Input
+                                  type="text"
+                                  disabled={!edit}
+                                  value={item.selling_price}
+                                  name="rate"
+                                  className="form-control"
+                                />
+                              </InputGroup>
+                            </Form.Group>
+                          </Col>
+
+                          <Col md={3} className="mb-3">
+                            <Form.Group>
+                              <Form.Label className="fw-semibold">Amount</Form.Label>
+                              <InputGroup>
+                                <Input
+                                  disabled
+                                  type="text"
+                                  value={item.qty_sold * item.selling_price}
+                                  className="form-control bg-light fw-bold"
+                                />
+                              </InputGroup>
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                      </Card.Body>
+                    </Card>
+                  ))}
+
+                {/* Totals Section */}
+                <Row className="mt-4">
+                  <Col md={8}></Col>
+                  <Col md={4}>
+                    <Card className="border-0 bg-light">
+                      <Card.Body>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span className="fw-semibold">Subtotal:</span>
+                          <span className="fw-bold">
+                            <span className="text-muted small">{invoice.currency}</span>
+                            {this.formatCurrency(transaction_total)}
+                          </span>
+                        </div>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span className="fw-semibold">Delivery Fee:</span>
+                          <span className="fw-bold">
+                            <span className="text-muted small">{invoice.currency}</span>
+                            {this.formatCurrency(invoice.delivery_fee)}
+                          </span>
+                        </div>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span className="fw-semibold">Discount:</span>
+                          <span className="fw-bold">
+                            <span className="text-muted small">{invoice.currency}</span>
+                            {this.formatCurrency(invoice.discount)}
+                          </span>
+                        </div>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span className="fw-semibold">Total Cost:</span>
+                          <span className="fw-bold">
+                            <span className="text-muted small">{invoice.currency}</span>
+                            {this.formatCurrency(invoice.amount)}
+                          </span>
+                        </div>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span className="fw-semibold text-success">Amount Received:</span>
+                          <span className="fw-bold text-success">
+                            <span className="text-muted small">{invoice.currency}</span>
+                            {this.formatCurrency(invoice.total_payment)}
+                          </span>
+                        </div>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span className="fw-semibold text-warning">Balance:</span>
+                          <span className="fw-bold text-warning">
+                            <span className="text-muted small">{invoice.currency}</span>
+                            {this.formatCurrency(invoice.total_balance)}
+                          </span>
+                        </div>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span className="fw-semibold text-info">Prev Balance:</span>
+                          <span className="fw-bold text-info">
+                            <span className="text-muted small">{invoice.currency}</span>
+                            {this.formatCurrency(prev_balance)}
+                          </span>
+                        </div>
+                        <div className="d-flex justify-content-between align-items-center mb-3 border-top pt-2">
+                          <span className="fw-bold text-danger">Total Balance:</span>
+                          <span className="fw-bold text-danger fs-5">
+                            <span className="text-muted small">{invoice.currency}</span>
+                            {this.formatCurrency(total_balance)}
+                          </span>
+                        </div>
+                        {edit && (
+                          <div className="d-grid">
+                            <Button
+                              variant="primary"
+                              size="lg"
+                              disabled={saving}
+                              onClick={this.onSaveInvoice}
+                              className="d-flex align-items-center justify-content-center gap-2"
+                            >
+                              {saving ? (
+                                <><i className="fa fa-spinner fa-spin" /> Updating...</>
+                              ) : (
+                                <><i className="fa fa-save" /> Update Invoice</>
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+
+            {/* Payments Section */}
+            {hideNav === true ? (
+              <Card className="border mb-4">
+                <Card.Header className="bg-success text-white">
+                  <h5 className="mb-0 fw-semibold">Payments</h5>
+                </Card.Header>
+                <Card.Body>
+                  {payments.map((payment, key) => (
+                    <Card key={key} className="border mb-3">
+                      <Card.Header className="bg-light">
+                        <h6 className="mb-0 fw-semibold">{this.ordinal(key + 1)} Payment</h6>
+                      </Card.Header>
+                      <Card.Body>
+                        <Row>
+                          <Col md={3} className="mb-3">
+                            <Form.Group>
+                              <Form.Label className="fw-semibold">Invoice No</Form.Label>
+                              <Input value={payment.invoice_num} disabled className="form-control bg-light" />
+                            </Form.Group>
+                          </Col>
+                          <Col md={3} className="mb-3">
+                            <Form.Group>
+                              <Form.Label className="fw-semibold">Amount</Form.Label>
+                              <Input
+                                value={`${invoice.currency}${this.formatCurrency(payment.amount)}`}
+                                disabled
+                                className="form-control bg-light"
+                              />
+                            </Form.Group>
+                          </Col>
+                          <Col md={3} className="mb-3">
+                            <Form.Group>
+                              <Form.Label className="fw-semibold">Paid</Form.Label>
+                              <Input
+                                value={`${invoice.currency}${this.formatCurrency(payment.amount_paid)}`}
+                                disabled
+                                className="form-control bg-light"
+                              />
+                            </Form.Group>
+                          </Col>
+                          <Col md={3} className="mb-3">
+                            <Form.Group>
+                              <Form.Label className="fw-semibold">Transaction Date</Form.Label>
+                              <Input
+                                value={moment(payment.created_at).format("MMM DD YYYY")}
+                                disabled
+                                className="form-control bg-light"
+                              />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        {user.admin === 1 && payments.length >= 1 && (
+                          <div className="d-flex justify-content-end">
+                            <Button
+                              variant="outline-primary"
+                              onClick={() => this.toggleEditPayment(payment)}
+                              size="sm"
+                              className="d-flex align-items-center gap-2"
+                            >
+                              <i className="fa fa-edit" />
+                              Edit
+                            </Button>
+                          </div>
+                        )}
+                      </Card.Body>
+                    </Card>
+                  ))}
+                </Card.Body>
+              </Card>
+            ) : (
+              <Card className="border-0 shadow-sm">
+                <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center">
+                  <h5 className="mb-0 fw-semibold">Payments History</h5>
+                </Card.Header>
+                <Card.Body className="p-0">
+                  <div className="table-responsive">
+                    <Table className="table-hover mb-0">
+                      <thead className="bg-light">
+                        <tr>
+                          <th className="border-0 py-3 px-4 fw-semibold">Invoice No</th>
+                          <th className="border-0 py-3 px-4 fw-semibold">Amount</th>
+                          <th className="border-0 py-3 px-4 fw-semibold">Paid</th>
+                          <th className="border-0 py-3 px-4 fw-semibold">Transaction Date</th>
+                          <th className="border-0 py-3 px-4 fw-semibold">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {payments.map((payment, key) => (
+                          <tr key={key} className="border-bottom">
+                            <td className="py-3 px-4 fw-semibold">{payment.invoice_num}</td>
+                            <td className="py-3 px-4">
+                              <span className="text-muted small">{invoice.currency}</span>
+                              <span className="fw-bold">{this.formatCurrency(payment.amount)}</span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="text-muted small">{invoice.currency}</span>
+                              <span className="fw-bold text-success">{this.formatCurrency(payment.amount_paid)}</span>
+                            </td>
+                            <td className="py-3 px-4">
+                              {moment(payment.created_at).format("MMM DD YYYY")}
+                            </td>
+                            <td className="py-3 px-4">
+                              {user.admin === 1 && payments.length >= 1 && (
+                                <Button
+                                  variant="outline-primary"
+                                  onClick={() => this.toggleEditPayment(payment)}
+                                  size="sm"
+                                  className="d-flex align-items-center gap-2"
+                                >
+                                  <i className="fa fa-edit" />
+                                  Edit
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="bg-light border-top-2">
+                          <td colSpan={2} className="py-3 px-4"></td>
+                          <td className="py-3 px-4">
+                            <div className="fw-bold text-success">
+                              Total Payments: <span className="text-muted small">{invoice.currency}</span>
+                              {this.formatCurrency(invoice.total_payment)}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="fw-bold text-warning">
+                              Balance: <span className="text-muted small">{invoice.currency}</span>
+                              {this.formatCurrency(invoice.total_balance)}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4"></td>
+                        </tr>
+                      </tbody>
+                    </Table>
+                  </div>
+                </Card.Body>
+              </Card>
+            )}
           </Card.Body>
         </Card>
-      )}
-    </Card.Body>
-  </Card>
       </>
     );
   }

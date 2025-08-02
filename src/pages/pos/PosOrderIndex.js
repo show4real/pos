@@ -1511,6 +1511,7 @@ export class PosOrderIndex extends Component {
                                             event.preventDefault();
                                           }
                                         }}
+                                        disabled={user.admin !== 1}
                                         value={sale.order.unit_selling_price}
                                         onChange={(event) => this.handlePriceChange(event, key)}
                                       />

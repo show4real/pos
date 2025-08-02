@@ -1,27 +1,8 @@
 import React from "react";
-import {
-  Col,
-  Row,
-  Nav,
-  Card,
-  Table,
-  Form,
-  Button,
-  ButtonGroup,
-  Breadcrumb,
-  InputGroup,
-  Dropdown,
-} from "@themesberg/react-bootstrap";
+import { Card, Table } from "@themesberg/react-bootstrap";
 import moment from "moment";
-import "./style.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faEnvelope,
-  faGlobe,
-  faPhone,
-  faVoicemail,
-} from "@fortawesome/free-solid-svg-icons";
-import { addCompanyProfile, getCompany } from "../../services/companyService";
+import { faPhone, faGlobe } from "@fortawesome/free-solid-svg-icons";
 import { toWords } from "../../services/numberWordService";
 
 export class Invoice extends React.Component {
@@ -42,480 +23,317 @@ export class Invoice extends React.Component {
 
   totalCost = () => {
     const { items } = this.props;
-
-    var total = 0;
-    for (let v = 0; v < items.length; v++) {
-      total += items[v].rate * items[v].quantity;
-    }
-    return total;
+    return items.reduce((total, item) => total + item.rate * item.quantity, 0);
   };
+
   formatCurrency2(x) {
-    if (x !== null && x !== 0 && x !== undefined) {
+    if (x) {
       const parts = x.toString().split(".");
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
       return `${parts.join(".")}`;
     }
-    return 0;
-  }
-
-  formatCurrency(y, x) {
-    if (x !== "null" && x !== "0") {
-      const parts = x.toString().split(".");
-      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-      return `${y}${parts.join(".")}`;
-    }
     return "0";
   }
 
+  formatCurrency(x) {
+    return x.toLocaleString(undefined, { minimumFractionDigits: 2 });
+  }
+
+  combineItems = (items) => {
+    return items.reduce((acc, item) => {
+      const existingItem = acc.find(
+        (i) =>
+          i.order.product_name === item.order.product_name &&
+          i.selling_price === item.selling_price
+      );
+
+      if (existingItem) {
+        existingItem.qty_sold += item.qty_sold;
+      } else {
+        acc.push({ ...item });
+      }
+
+      return acc;
+    }, []);
+  };
+
   render() {
-    const { invoice, user, previous_payment, items, company, total_balance } =
-      this.props;
+    const { 
+      invoice, 
+      company, 
+      items, 
+      pos_items, 
+      total_balance, 
+      prev_balance, 
+      delivery_fee,
+      discount,
+      discount_percentage 
+    } = this.props;
+    
+    const combinedItems = this.combineItems(pos_items);
+
+    const thermalStyles = {
+      container: {
+        fontFamily: "'Courier New', monospace",
+        width: "80mm", // Standard thermal printer width
+        maxWidth: "302px", // 80mm in pixels at 96dpi
+        margin: "0 auto",
+        padding: "5px",
+        backgroundColor: "white",
+        color: "black",
+        fontSize: "12px",
+        lineHeight: "1.2",
+        boxSizing: "border-box",
+      },
+      header: {
+        textAlign: "center",
+        marginBottom: "8px",
+        borderBottom: "1px dashed #000",
+        paddingBottom: "5px",
+      },
+      companyName: {
+        fontSize: "16px",
+        fontWeight: "bold",
+        margin: "0 0 3px 0",
+        textTransform: "uppercase",
+      },
+      contactInfo: {
+        fontSize: "10px",
+        margin: "1px 0",
+      },
+      invoiceInfo: {
+        display: "flex",
+        justifyContent: "space-between",
+        fontSize: "10px",
+        marginBottom: "8px",
+        paddingBottom: "5px",
+        borderBottom: "1px dashed #000",
+      },
+      invoiceLeft: {
+        textAlign: "left",
+        flex: 1,
+      },
+      invoiceRight: {
+        textAlign: "right",
+        flex: 1,
+      },
+      table: {
+        width: "100%",
+        marginBottom: "8px",
+        fontSize: "10px",
+        borderCollapse: "collapse",
+      },
+      tableHeader: {
+        borderBottom: "1px solid #000",
+        borderTop: "1px solid #000",
+        fontWeight: "bold",
+        padding: "2px 1px",
+        textAlign: "left",
+      },
+      tableCell: {
+        padding: "2px 1px",
+        borderBottom: "1px dotted #ccc",
+        verticalAlign: "top",
+      },
+      totalsSection: {
+        fontSize: "11px",
+        textAlign: "right",
+        marginBottom: "8px",
+        paddingTop: "5px",
+        borderTop: "1px dashed #000",
+      },
+      totalLine: {
+        margin: "2px 0",
+        display: "flex",
+        justifyContent: "space-between",
+      },
+      totalLabel: {
+        fontWeight: "normal",
+      },
+      totalAmount: {
+        fontWeight: "bold",
+        minWidth: "60px",
+        textAlign: "right",
+      },
+      grandTotal: {
+        fontSize: "12px",
+        fontWeight: "bold",
+        borderTop: "1px solid #000",
+        paddingTop: "3px",
+        marginTop: "3px",
+      },
+      footer: {
+        fontSize: "9px",
+        textAlign: "center",
+        marginTop: "8px",
+        paddingTop: "5px",
+        borderTop: "1px dashed #000",
+      },
+      divider: {
+        textAlign: "center",
+        margin: "5px 0",
+        fontSize: "10px",
+      },
+      discountLine: {
+        color: "#d63384", // Bootstrap danger color for discount
+      },
+    };
 
     return (
-      <div style={{ padding: 10 }}>
+      <div style={thermalStyles.container}>
         {Object.keys(invoice).length !== 0 && (
-          <body>
-            <header>
-              {/* <div class="logo" style={{ fontWeight: 600, color: "black" }}>
-                <img width={100} src={`${company && company.logo_url}`} />
-              </div> */}
-              <h1
-                style={{
-                  fontWeight: 600,
-                  fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                  textAlign: "center",
-                  color: "black",
-                }}
-              >
-                {company !== null ? company.name : " "}
+          <>
+            {/* Header */}
+            <header style={thermalStyles.header}>
+              <h1 style={thermalStyles.companyName}>
+                {company?.name || ""}
               </h1>
+              <div style={thermalStyles.contactInfo}>
+                <FontAwesomeIcon icon={faPhone} size="xs" /> {company.phone_one}
+                {company.phone_two && `, ${company.phone_two}`}
+              </div>
+              {company.website && (
+                <div style={thermalStyles.contactInfo}>
+                  <FontAwesomeIcon icon={faGlobe} size="xs" /> {company.website}
+                </div>
+              )}
+              {company.address && (
+                <div style={thermalStyles.contactInfo}>{company.address}</div>
+              )}
             </header>
 
-            <table>
-              <tbody>
-                <tr>
-                  <th class="center-align" colspan="2">
-                    <span
-                      class="receipt"
-                      style={{
-                        fontWeight: 600,
-                        fontSize: 18,
-                        lineHeight: 1.6,
-                        fontFamily:
-                          "monaco, Consolas, Lucida Console, monospace",
-                        color: "black",
-                      }}
-                    >
-                      {company && company.invoice_header}
-                    </span>
-                  </th>
-                </tr>
-                {company && (
-                  <tr>
-                    <th class="center-align">
-                      <span
-                        class="receipt"
-                        style={{
-                          fontWeight: 600,
-                          fontSize: 18,
-                          lineHeight: 1.6,
-                          fontFamily:
-                            "monaco, Consolas, Lucida Console, monospace",
-                          color: "black",
-                        }}
-                      >
-                        <span>
-                          <FontAwesomeIcon icon={faPhone} /> {company.phone_one}
-                          , &nbsp;{company.phone_two}
-                        </span>
-                        <span>
-                          &nbsp;&nbsp;
-                          <FontAwesomeIcon icon={faGlobe} />
-                          &nbsp;{company.website}
-                        </span>
-                      </span>
-                    </th>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            {/* Invoice Info */}
+            <div style={thermalStyles.invoiceInfo}>
+              <div style={thermalStyles.invoiceLeft}>
+                <div>Date: {moment(invoice.created_at).format("DD/MM/YY HH:mm")}</div>
+                <div>Invoice #: {invoice.invoice_no}</div>
+              </div>
+              <div style={thermalStyles.invoiceRight}>
+                <div><strong>CUSTOMER</strong></div>
+                <div>{invoice.client.name}</div>
+                {invoice.client.phone && <div>{invoice.client.phone}</div>}
+              </div>
+            </div>
 
-            <table class="bill-details">
-              <tbody>
+            {/* Items Table */}
+            <table style={thermalStyles.table}>
+              <thead>
                 <tr>
-                  <td
-                    colSpan={4}
-                    style={{
-                      fontWeight: 600,
-                      color: "black",
-                      fontSize: 18,
-                      fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    <span>
-                      Date:{moment(invoice.issued_date).format("MMM DD YYYY")}
-                      <br />
-                      {invoice.due_date === invoice.issued_date
-                        ? ""
-                        : `  Due:` +
-                          moment(invoice.due_date).format("MMM DD YYYY")}
-                      <br />
-                    </span>
-                    Invoice #:{invoice.invoice_no}
-                    <br />
-                  </td>
-                </tr>
-                <tr>
-                  <td
-                    colSpan={4}
-                    style={{
-                      verticalAlign: "top",
-                      paddingLeft: 5,
-                      fontWeight: 600,
-                      fontSize: 18,
-                      fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                      color: "black",
-                      paddingRight: 10,
-                      whiteSpace: "pre-line",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    <span style={{ whiteSpace: "pre-line" }}>
-                      {company && company.address}
-                    </span>
-                  </td>
-
-                  <td
-                    style={{
-                      paddingLeft: 5,
-                      fontWeight: 600,
-                      fontSize: 18,
-                      fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                      color: "black",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    <span>
-                      {invoice.client.name}
-                      <br />
-                      {invoice.client.address}
-                      <br />
-                      {invoice.client.phone}
-                      <br />
-                      {invoice.client.email !== "" ? invoice.client.email : ""}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <table class="items" style={{ marginTop: 10 }}>
-              <thead style={{ margin: 10 }}>
-                <tr>
-                  {/* <th class="heading name" style={{ paddingLeft:10, color:'black', fontFamily: 'monaco, Consolas, Lucida Console, monospace', textAlign:'justify', fontSize:18, fontWeight:700}}>Item</th> */}
-                  <th
-                    class="heading description"
-                    colSpan={2}
-                    style={{
-                      paddingLeft: 10,
-                      color: "black",
-                      textAlign: "justify",
-                      fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                      fontSize: 18,
-                      fontWeight: 700,
-                    }}
-                  >
-                    PRODUCT
-                  </th>
-                  <th
-                    class="heading qty"
-                    style={{
-                      color: "black",
-                      textAlign: "justify",
-                      fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                      paddingLeft: 10,
-                      fontSize: 18,
-                      fontWeight: 700,
-                    }}
-                  >
-                    QTY
-                  </th>
-                  <th
-                    class="heading rate"
-                    style={{
-                      color: "black",
-                      textAlign: "justify",
-                      fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                      paddingLeft: 10,
-                      fontSize: 18,
-                      fontWeight: 700,
-                    }}
-                  >
-                    PRICE
-                  </th>
-                  <th
-                    class="heading amount"
-                    style={{
-                      color: "black",
-                      textAlign: "justify",
-                      fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                      paddingLeft: 15,
-                      fontSize: 18,
-                      fontWeight: 700,
-                    }}
-                  >
-                    AMOUNT
-                  </th>
+                  <th style={{ ...thermalStyles.tableHeader, width: "45%" }}>ITEM</th>
+                  <th style={{ ...thermalStyles.tableHeader, width: "15%", textAlign: "center" }}>QTY</th>
+                  <th style={{ ...thermalStyles.tableHeader, width: "20%", textAlign: "right" }}>PRICE</th>
+                  <th style={{ ...thermalStyles.tableHeader, width: "20%", textAlign: "right" }}>TOTAL</th>
                 </tr>
               </thead>
-
               <tbody>
-                {Object.keys(items).length !== 0
-                  ? items.map((item, key) => {
-                      return (
-                        <tr style={{}}>
-                          {/* <td style={{verticalAlign: 'top'}}>
-                      {/* <div  class="row-spacing" style={{paddingLeft:10, width:'40mm', paddingRight:10,  paddingTop:3}}>
-                        {item.name}</div>
-                      </td> */}
-
-                          <td colSpan={2}>
-                            <div
-                              class="row-spacing"
-                              style={{
-                                paddingLeft: 10,
-                                whiteSpace: "pre-line",
-                                fontSize: 18,
-                                width: "50mm",
-                                lineHeight: 1.5,
-                                textTransform: "uppercase",
-                              }}
-                            >
-                              {item.description}
-                            </div>
-                          </td>
-                          <td style={{ verticalAlign: "top" }}>
-                            <div
-                              class="row-spacing"
-                              style={{
-                                paddingLeft: 10,
-                                fontSize: 18,
-                                paddingTop: 0,
-                              }}
-                            >
-                              {item.quantity}
-                            </div>
-                          </td>
-                          <td style={{ verticalAlign: "top" }}>
-                            <div
-                              class="row-spacing"
-                              style={{
-                                paddingLeft: 10,
-                                fontSize: 18,
-                                paddingTop: 0,
-                              }}
-                            >
-                              {this.formatCurrency2(item.rate)}
-                            </div>
-                          </td>
-                          <td style={{ verticalAlign: "top" }}>
-                            <div
-                              class="row-spacing"
-                              style={{
-                                paddingLeft: 15,
-                                fontSize: 18,
-                                paddingTop: 0,
-                              }}
-                            >
-                              {this.formatCurrency2(item.amount)}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  : ""}
-
-                <tr style={{ marginTop: 20 }}>
-                  <td
-                    colspan="3"
-                    style={{
-                      fontSize: 18,
-                      fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                    }}
-                    class="sum-up line"
-                  >
-                    Total&nbsp;
-                  </td>
-
-                  <td
-                    class="line price"
-                    style={{
-                      fontSize: 18,
-                      fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                    }}
-                  >
-                    {this.formatCurrency(invoice.currency, invoice.amount)}
-                  </td>
-                </tr>
-
-                <tr style={{ paddingTop: 10 }}>
-                  <td
-                    colspan="3"
-                    style={{
-                      fontSize: 18,
-                      fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                    }}
-                    class="sum-up"
-                  >
-                    Paid&nbsp;
-                  </td>
-                  <td
-                    class="price"
-                    style={{
-                      fontSize: 18,
-                      fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                    }}
-                  >
-                    {this.formatCurrency(
-                      invoice.currency,
-                      invoice.total_payment
-                    )}
-                  </td>
-                </tr>
-                <tr>
-                  {total_balance > 0 && (
-                    <>
-                      <td
-                        colspan="3"
-                        style={{
-                          fontSize: 18,
-                          fontFamily:
-                            "monaco, Consolas, Lucida Console, monospace",
-                        }}
-                        class="sum-up"
-                      >
-                        Balance&nbsp;
-                      </td>
-                      <td
-                        class="price"
-                        style={{
-                          fontSize: 18,
-                          fontFamily:
-                            "monaco, Consolas, Lucida Console, monospace",
-                        }}
-                      >
-                        {this.formatCurrency(invoice.currency, total_balance)}
-                      </td>
-                    </>
-                  )}
-                </tr>
+                {combinedItems.map((item, index) => (
+                  <tr key={index}>
+                    <td style={{ ...thermalStyles.tableCell, fontSize: "9px" }}>
+                      {item.order.product_name.toUpperCase()}
+                    </td>
+                    <td style={{ ...thermalStyles.tableCell, textAlign: "center" }}>
+                      {item.qty_sold}
+                    </td>
+                    <td style={{ ...thermalStyles.tableCell, textAlign: "right" }}>
+                      {this.formatCurrency(item.selling_price)}
+                    </td>
+                    <td style={{ ...thermalStyles.tableCell, textAlign: "right", fontWeight: "bold" }}>
+                      {this.formatCurrency(item.selling_price * item.qty_sold)}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
 
-            <div
-              style={{
-                fontWeight: 800,
-                textTransform: "uppercase",
-                paddingLeft: 5,
-                fontSize: "13px",
-                color: "black",
-                fontSize: 18,
-                fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                verticalAlign: "bottom",
-                lineHeight: 1.6,
-              }}
-            >
-              <strong>
-                Amount in word:
-                {this.getWords(invoice.amount) + ` ` + invoice.currency}
-              </strong>
-            </div>
+            {/* Totals Section */}
+            <div style={thermalStyles.totalsSection}>
+              <div style={thermalStyles.totalLine}>
+                <span style={thermalStyles.totalLabel}>Subtotal:</span>
+                <span style={thermalStyles.totalAmount}>
+                  {invoice.currency}{this.formatCurrency2(invoice.amount)}
+                </span>
+              </div>
 
-            <div
-              style={{
-                fontWeight: 800,
-                paddingLeft: 5,
-                fontSize: "13px",
-                color: "black",
-                fontSize: 18,
-                fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                verticalAlign: "bottom",
-                lineHeight: 1.6,
-              }}
-            >
-              <strong>{company && company.invoice_footer_one}</strong>
-            </div>
-            {/* <div
-              style={{
-                fontWeight: 700,
-                paddingLeft: 5,
-                fontSize: 18,
-                fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                color: "black",
-                verticalAlign: "bottom",
-              }}
-            >
-              Terms and Condition!
-            </div> */}
-            <div
-              style={{
-                fontWeight: 800,
-                paddingLeft: 5,
-                fontSize: 18,
-                fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                color: "black",
-                verticalAlign: "bottom",
-                lineHeight: 1.6,
-                marginBottom: 30,
-              }}
-            >
-              {company && company.invoice_footer_two}
-            </div>
-
-            <table>
-              {/* <tr >
-                  <td  colSpan={3}>&nbsp;&nbsp;  __________________________</td>
-                 
-                
-                </tr>
-                <tr style={{marginBottom:'20px'}}>
-                  <td><span style={{fontSize:18,  paddingLeft: 5, fontFamily: 'monaco, Consolas, Lucida Console, monospace', paddingLeft:10, color:'black'}}>Customer Signature</span></td>
-                </tr> */}
-              <tr style={{ marginBottom: "20px" }}>
-                <td>
-                  <span
-                    style={{
-                      fontSize: 18,
-                      paddingLeft: 5,
-                      fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                      paddingLeft: 10,
-                      color: "black",
-                    }}
-                  ></span>
-                </td>
-              </tr>
-
-              <tr style={{ marginTop: 40 }}>
-                <td>
-                  <span
-                    style={{
-                      fontSize: 18,
-                      paddingLeft: 5,
-                      fontFamily: "monaco, Consolas, Lucida Console, monospace",
-                      paddingLeft: 10,
-                      color: "black",
-                    }}
-                  >
-                    Cashier: {invoice.cashier_name}
+              {/* Delivery Fee */}
+              {delivery_fee > 0 && (
+                <div style={thermalStyles.totalLine}>
+                  <span style={thermalStyles.totalLabel}>Delivery Fee:</span>
+                  <span style={thermalStyles.totalAmount}>
+                    {invoice.currency}{this.formatCurrency2(delivery_fee)}
                   </span>
-                </td>
-              </tr>
-            </table>
-          </body>
+                </div>
+              )}
+
+              {/* Discount */}
+              {(discount > 0 || discount_percentage > 0) && (
+                <div style={{ ...thermalStyles.totalLine, ...thermalStyles.discountLine }}>
+                  <span style={thermalStyles.totalLabel}>
+                    Discount {discount_percentage > 0 ? `(${discount_percentage}%)` : ''}:
+                  </span>
+                  <span style={thermalStyles.totalAmount}>
+                    -{invoice.currency}{this.formatCurrency2(discount || 0)}
+                  </span>
+                </div>
+              )}
+              
+              <div style={thermalStyles.totalLine}>
+                <span style={thermalStyles.totalLabel}>Paid:</span>
+                <span style={thermalStyles.totalAmount}>
+                  {invoice.currency}{this.formatCurrency2(invoice.amount_paid)}
+                </span>
+              </div>
+              
+              <div style={thermalStyles.totalLine}>
+                <span style={thermalStyles.totalLabel}>Balance:</span>
+                <span style={thermalStyles.totalAmount}>
+                  {invoice.currency}{this.formatCurrency2(invoice.amount - invoice.amount_paid)}
+                </span>
+              </div>
+              
+              {prev_balance > 0 && (
+                <div style={thermalStyles.totalLine}>
+                  <span style={thermalStyles.totalLabel}>Prev. Balance:</span>
+                  <span style={thermalStyles.totalAmount}>
+                    {invoice.currency}{this.formatCurrency2(prev_balance)}
+                  </span>
+                </div>
+              )}
+              
+              <div style={{ ...thermalStyles.totalLine, ...thermalStyles.grandTotal }}>
+                <span style={thermalStyles.totalLabel}>TOTAL BALANCE:</span>
+                <span style={thermalStyles.totalAmount}>
+                  {invoice.currency}{this.formatCurrency2(total_balance)}
+                </span>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div style={thermalStyles.divider}>
+              {"=".repeat(32)}
+            </div>
+
+            {/* Footer */}
+            <footer style={thermalStyles.footer}>
+              {company?.invoice_footer_one && (
+                <div style={{ marginBottom: "2px" }}>{company.invoice_footer_one}</div>
+              )}
+              {company?.invoice_footer_two && (
+                <div style={{ marginBottom: "2px" }}>{company.invoice_footer_two}</div>
+              )}
+              
+              <div style={{ marginTop: "5px", fontSize: "8px" }}>
+                Cashier: {invoice.cashier_name}
+              </div>
+              
+              <div style={{ marginTop: "3px", fontSize: "8px" }}>
+                Thank you for your business!
+              </div>
+            </footer>
+          </>
         )}
       </div>
     );
   }
 }
+
 export default Invoice;

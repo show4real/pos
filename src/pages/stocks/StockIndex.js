@@ -1216,8 +1216,8 @@ export class StockIndex extends Component {
                                 this.toggleUpdatePrice(stock)
                               }
                             >
-                              <i className="fa fa-barcode" />
-                              Edit Price / Add Qty
+                              <i className="fa fa-edit" />
+                              Edit Price & Qty
                             </Button>
 
                             {/* Move Stock Button - Show only when there's stock to move */}
