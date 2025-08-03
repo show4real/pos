@@ -117,7 +117,10 @@ export class StockIndex extends Component {
         end_date: "",
         search: "",
         page: 1
-      }
+      },
+      showStockActions: {},
+      // New state for expandable stock details
+      expandedStockDetails: {}
     };
 
     // Create refs
@@ -145,6 +148,25 @@ export class StockIndex extends Component {
     });
   };
 
+  toggleStockActions = (stockId) => {
+    this.setState(prevState => ({
+      showStockActions: {
+        ...prevState.showStockActions,
+        [stockId]: !prevState.showStockActions?.[stockId]
+      }
+    }));
+  }
+
+  // New method to toggle stock details expansion
+  toggleStockDetails = (stockId) => {
+    this.setState(prevState => ({
+      expandedStockDetails: {
+        ...prevState.expandedStockDetails,
+        [stockId]: !prevState.expandedStockDetails?.[stockId]
+      }
+    }));
+  }
+
   // Helper method to restore filter state
   restoreFilters = () => {
     const { previousFilters } = this.state;
@@ -162,7 +184,7 @@ export class StockIndex extends Component {
   reloadStocksWithFilters = (callback = null) => {
     // Save current filters before reloading
     this.saveCurrentFilters();
-    
+
     // Small delay to ensure state is saved
     setTimeout(() => {
       this.getStocks();
@@ -262,7 +284,7 @@ export class StockIndex extends Component {
   handleCreateStock = () => {
     // Save filters before opening modal
     this.saveCurrentFilters();
-    
+
     const initialFormData = {
       product_id: null,
       supplier_id: null,
@@ -386,7 +408,7 @@ export class StockIndex extends Component {
       selectedCreateSupplier: null,
       formErrors: {}
     });
-    
+
     // Restore filters and reload data
     this.restoreFilters();
     this.reloadStocksWithFilters();
@@ -413,7 +435,7 @@ export class StockIndex extends Component {
       selectedCreateSupplier: null,
       formErrors: {}
     });
-    
+
     // Restore filters
     this.restoreFilters();
   };
@@ -423,7 +445,7 @@ export class StockIndex extends Component {
       showEditModal: false,
       updateStock: null
     });
-    
+
     // Restore filters and reload data
     this.restoreFilters();
     this.reloadStocksWithFilters();
@@ -433,7 +455,7 @@ export class StockIndex extends Component {
   handleDeleteStock = (stock) => {
     // Save filters before opening modal
     this.saveCurrentFilters();
-    
+
     this.setState({
       showDeleteModal: true,
       stockToDelete: stock,
@@ -455,7 +477,7 @@ export class StockIndex extends Component {
       });
 
       this.showToast("Stock deleted successfully!");
-      
+
       // Restore filters and reload data
       this.restoreFilters();
       this.reloadStocksWithFilters();
@@ -472,7 +494,7 @@ export class StockIndex extends Component {
       showDeleteModal: false,
       stockToDelete: null,
     });
-    
+
     // Restore filters
     this.restoreFilters();
   };
@@ -481,7 +503,7 @@ export class StockIndex extends Component {
   handleMoveStock = (stock) => {
     // Save filters before opening modal
     this.saveCurrentFilters();
-    
+
     const maxMoveQuantity = stock.in_stock;
     const branchOptions = this.state.branches
       .filter(branch => branch.id !== parseInt(this.state.branch_id))
@@ -552,7 +574,7 @@ export class StockIndex extends Component {
       });
 
       this.showToast(`Successfully moved ${moveQuantity} units to ${selectedToBranch.label}`);
-      
+
       // Restore filters and reload data
       this.restoreFilters();
       this.reloadStocksWithFilters();
@@ -571,7 +593,7 @@ export class StockIndex extends Component {
       selectedToBranch: null,
       moveQuantity: 0,
     });
-    
+
     // Restore filters
     this.restoreFilters();
   };
@@ -675,9 +697,9 @@ export class StockIndex extends Component {
   };
 
   toggleCloseUpdateStock = () => {
-    this.setState({ 
+    this.setState({
       updateStock: null,
-      showEditModal: false 
+      showEditModal: false
     });
     // Restore filters and reload data
     this.restoreFilters();
@@ -772,7 +794,8 @@ export class StockIndex extends Component {
       products,
       formData,
       formErrors,
-      allProducts
+      allProducts,
+      expandedStockDetails
 
     } = this.state;
 
@@ -804,7 +827,6 @@ export class StockIndex extends Component {
           <EditPrice stock={editPrice} toggle={() => this.toggleCloseEditPrice()} />
         )}
 
-        
         {/* Header with Breadcrumb */}
         <Row className="mb-4">
           <Col lg="12">
@@ -816,8 +838,8 @@ export class StockIndex extends Component {
                 </Breadcrumb>
                 {currentBranch && (
                   <div className="mt-2">
-                    <span className="text-muted" style={{fontSize:30}}>Branch: </span>
-                    <span className="fw-semibold text-primary" style={{fontSize:30}}>{currentBranch.name}</span>
+                    <span className="text-muted" style={{ fontSize: 30 }}>Branch: </span>
+                    <span className="fw-semibold text-primary" style={{ fontSize: 30 }}>{currentBranch.name}</span>
                   </div>
                 )}
               </div>
@@ -1071,7 +1093,7 @@ export class StockIndex extends Component {
                       Product
                     </th>
                     <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
-                      Branch
+                      Branch & Date
                     </th>
                     <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
                       Stock Details
@@ -1080,18 +1102,25 @@ export class StockIndex extends Component {
                       Supplier
                     </th>
                     <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
-                      Sold
+                      Performance
                     </th>
                     <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
-                      Amount
+                      Revenue
                     </th>
                     <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
-                      Action
+                      Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {stocks.map((stock, key) => (
+                  {stocks.map((stock, key) => {
+                     const totalMovedOut = stock.movements_from && Array.isArray(stock.movements_from) 
+                      ? stock.movements_from.reduce((total, movement) => total + (movement.quantity || 0), 0)
+                      : 0;
+                     const stockId = stock.id || stock.order?.id || key;
+                     const isExpanded = expandedStockDetails[stockId];
+                    return (
+                    
                     <tr key={key} className="border-bottom">
                       <td className="py-4 px-4">
                         <div className="d-flex align-items-center">
@@ -1100,171 +1129,253 @@ export class StockIndex extends Component {
                               <img
                                 src={stock.product_image}
                                 alt={stock.product_name}
-                                className="rounded"
-                                style={{ width: '50px', height: '50px', objectFit: 'cover' }}
+                                className="rounded shadow-sm"
+                                style={{ width: '60px', height: '60px', objectFit: 'cover' }}
                               />
                             ) : (
                               <div
-                                className="bg-light rounded d-flex align-items-center justify-content-center text-muted"
-                                style={{ width: '50px', height: '50px' }}
+                                className="bg-light rounded d-flex align-items-center justify-content-center text-muted border"
+                                style={{ width: '60px', height: '60px' }}
                               >
-                                <i className="fa fa-image" />
+                                <i className="fa fa-image fa-lg" />
                               </div>
                             )}
                           </div>
                           <div>
-                            <div className="fw-semibold text-dark">{stock.product_name}</div>
+                            <div className="fw-bold text-dark mb-1">{stock.product_name}</div>
                             {order && (
-                              <small className="text-muted">
+                              <span className="badge bg-primary-soft text-primary small">
                                 <i className="fa fa-filter me-1" />
                                 Filtered Item
-                              </small>
+                              </span>
                             )}
                           </div>
                         </div>
                       </td>
 
                       <td className="py-4 px-4">
-                        <span className="text-muted">{stock.branch_name}</span>
-                        <div className="text-muted">
-                          {dayjs(stock.created_at).format('MMMM D, YYYY h:mm A')}
+                        <div className="mb-2">
+                          <span className="fw-semibold text-dark">{stock.branch_name}</span>
+                        </div>
+                        <div className="text-muted small">
+                          <i className="fa fa-calendar me-1" />
+                          {dayjs(stock.created_at).format('MMM D, YYYY')}
+                        </div>
+                        <div className="text-muted small">
+                          <i className="fa fa-clock me-1" />
+                          {dayjs(stock.created_at).format('h:mm A')}
                         </div>
                       </td>
 
                       <td className="py-4 px-4">
-                        <div className="small">
-                          <div className="mb-2">
-                            <span className="fw-semibold text-success">Selling Price: </span>
-                            <span className="text-dark">{this.formatCurrency(stock.order.unit_selling_price)}</span>
+                        <div className="stock-details">
+                          {/* Always visible essential info */}
+                          <div className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center mb-2">
+                              <span className="fw-semibold text-success">Selling Price:</span>
+                              <span className="text-dark fw-bold">{this.formatCurrency(stock.order.unit_selling_price)}</span>
+                            </div>
+                            <div className="d-flex justify-content-between align-items-center mb-2">
+                              <span className="fw-semibold text-warning">Cost Price:</span>
+                              <span className="text-dark">{this.formatCurrency(stock.order.unit_price)}</span>
+                            </div>
+                            <div className="d-flex justify-content-between align-items-center">
+                              <span className="fw-semibold text-info">Current Stock:</span>
+                              <span className="badge bg-info text-white fs-6">{stock.in_stock}</span>
+                            </div>
                           </div>
-                          <div className="mb-2">
-                            <span className="fw-semibold text-warning">Cost Price: </span>
-                            <span className="text-dark">{this.formatCurrency(stock.order.unit_price)}</span>
+
+                          {/* Expandable details */}
+                          {isExpanded && (
+                            <div className="expanded-details border-top pt-3">
+                              <div className="row g-2 mb-3">
+                                <div className="col-6">
+                                  <div className="d-flex small">
+                                    <span className="text-muted">Initial Stock:</span>&nbsp;&nbsp;&nbsp;
+                                    <span className="fw-semibold">{totalMovedOut + stock.stock_quantity}</span>
+                                  </div>
+                                </div>
+                                <div className="col-6">
+                                  <div className="d-flex small">
+                                    <span className="text-muted">Moved Out:</span>&nbsp;&nbsp;&nbsp;
+                                    <span className="fw-semibold text-warning">{totalMovedOut}</span>
+                                  </div>
+                                </div>
+                                <div className="col-6">
+                                  <div className="d-flex small">
+                                    <span className="text-muted">Branch Stock:</span>&nbsp;&nbsp;&nbsp;
+                                    <span className="fw-semibold">{stock.stock_quantity}</span>
+                                  </div>
+                                </div>
+                                <div className="col-6">
+                                  <div className="d-flex small">
+                                    <span className="text-muted">Sold:</span>&nbsp;&nbsp;&nbsp;
+                                    <span className="fw-semibold text-danger">{stock.quantity_sold}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="mb-3">
+                                <div className="small text-muted mb-1">Purchase Details:</div>
+                                <div className="bg-light p-2 rounded small">
+                                  <div className="d-flex justify-content-between mb-1">
+                                    <span>Purchase ID:</span>
+                                    <code className="text-primary">{stock.order.tracking_id}</code>
+                                  </div>
+                                  <div className="d-flex justify-content-between">
+                                    <span>Barcode:</span>
+                                    <code className="text-primary">{stock.order.barcode || "N/A"}</code>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="mb-3">
+                                <StockMovementHistory stock={stock} />
+                              </div>
+
+                             
+                            </div>
+                          )}
+
+                          {/* Toggle button */}
+                          <div className="mt-2">
+                            <Button
+                              variant="outline-secondary"
+                              size="sm"
+                              onClick={() => this.toggleStockDetails(stockId)}
+                              className="d-flex align-items-center gap-1 w-100"
+                            >
+                              <i className={`fa fa-chevron-${isExpanded ? 'up' : 'down'}`} />
+                              <span className="small">{isExpanded ? 'Show Less' : 'View More'}</span>
+                            </Button>
                           </div>
-                          <div className="mb-2">
-                            <span className="fw-semibold text-primary">Initial Stock: </span>
-                            <span className="text-dark fw-bold">{stock.stock_quantity}</span>
-                            {order && (
-                              <i className="fa fa-info-circle text-primary ms-1" title="Included in summary above" />
-                            )}
-                          </div>
-                          <div className="mb-2">
-                            <span className="fw-semibold text-danger">Sold: </span>
-                            <span className="text-dark fw-bold">{stock.quantity_sold}</span>
-                            {order && (
-                              <i className="fa fa-info-circle text-success ms-1" title="Included in summary above" />
-                            )}
-                          </div>
-                          <div className="mb-2">
-                            <span className="fw-semibold text-info">In Stock: </span>
-                            <span className="text-dark fw-bold">{stock.in_stock}</span>
-                            {order && (
-                              <i className="fa fa-info-circle text-info ms-1" title="Included in summary above" />
-                            )}
-                          </div>
-                          <div>
-                            <span className="fw-semibold text-muted">Purchase ID: </span>
-                            <code className="text-primary">{stock.order.tracking_id}</code>
-                          </div>
-                          <div>
-                            <span className="fw-semibold text-muted">Barcode: </span>
-                            <code className="text-primary">{stock.order.barcode ?? "N/A"}</code>
-                          </div>
-                            <StockMovementHistory stock={stock} />
-                          
                         </div>
                       </td>
 
                       <td className="py-4 px-4">
-                        <span className="text-muted">{stock.order.supplier_name}</span>
+                        <div className="text-dark fw-semibold mb-1">{stock.order.supplier_name}</div>
+                        <div className="text-muted small">Supplier</div>
                       </td>
 
                       <td className="py-4 px-4">
-                        <span className="badge bg-success rounded-pill fs-6">
-                          {stock.quantity_sold}
-                        </span>
+                        <div className="mb-2">
+                          <span className="badge bg-success rounded-pill">
+                            <i className="fa fa-shopping-cart me-1" />
+                            {stock.quantity_sold} sold
+                          </span>
+                        </div>
+                        <div className="mb-2">
+                          <span className="badge bg-info rounded-pill">
+                            <i className="fa fa-warehouse me-1" />
+                            {stock.in_stock} remaining
+                          </span>
+                        </div>
+                        {stock.quantity_sold > 0 && (
+                          <div className="small text-muted">
+                            Sales Rate: {stock.stock_quantity > 0 ? ((stock.quantity_sold / (stock.quantity_sold + stock.in_stock)) * 100).toFixed(1) : 0}%
+                          </div>
+                        )}
                       </td>
 
                       <td className="py-4 px-4">
-                        <span className="fw-semibold text-success fs-6">
-                          {this.formatCurrency(stock.quantity_sold * stock.order.unit_selling_price)}
-                        </span>
+                        <div className="mb-2">
+                          <div className="fw-bold text-success fs-6">
+                            {this.formatCurrency(stock.quantity_sold * stock.order.unit_selling_price)}
+                          </div>
+                          <div className="small text-muted">Total Revenue</div>
+                        </div>
+                        <div>
+                          <div className="fw-semibold text-primary small">
+                            {this.formatCurrency((stock.order.unit_selling_price - stock.order.unit_price) * stock.quantity_sold)}
+                          </div>
+                          <div className="small text-muted">Profit Earned</div>
+                        </div>
                       </td>
-                     
 
                       <td className="py-4 px-4">
                         <div className="d-flex flex-column gap-2">
-                          <div className="d-flex gap-2">
+                          {/* Settings Toggle Button */}
+                          <div className="d-flex justify-content-end">
                             <Button
-                              variant="outline-primary"
-                              type="submit"
-                              className="d-flex align-items-center gap-2"
+                              variant="outline-secondary"
                               size="sm"
-                              onClick={() =>
-                                this.toggleUpdateBarcode(stock.order)
-                              }
+                              onClick={() => this.toggleStockActions(stock.id || stock.order)}
+                              className="d-flex align-items-center"
+                              title="Toggle stock actions"
                             >
-                              <i className="fa fa-barcode" />
-                              Update Barcode
+                              <i className={`fa fa-cog ${this.state.showStockActions?.[stock.id || stock.order] ? 'fa-spin' : ''}`} />
                             </Button>
-                            <Button
-                              variant="outline-primary"
-                              type="submit"
-                              className="d-flex align-items-center gap-2"
-                              size="sm"
-                              onClick={() =>
-                                this.toggleUpdatePrice(stock)
-                              }
-                            >
-                              <i className="fa fa-edit" />
-                              Edit Price & Qty
-                            </Button>
-
-                            {/* Move Stock Button - Show only when there's stock to move */}
-                            {stock.in_stock > 0 && (
-                              <Button
-                                variant="outline-info"
-                                size="sm"
-                                onClick={() => this.handleMoveStock(stock)}
-                                className="d-flex align-items-center gap-2"
-                                title={`Move stock to another branch (${stock.in_stock} available)`}
-                              >
-                                <i className="fa fa-exchange-alt" />
-                                Move Stock
-                              </Button>
-                            )}
                           </div>
-                        
 
-                        {(!stock.movements_from?.length && !stock.movements_to?.length) && (
-                            <Button
-                              variant="outline-primary"
-                              type="submit"
-                              className="d-flex align-items-center gap-2"
-                              size="sm"
-                              onClick={() => this.toggleUpdateStock(stock)}
-                            >
-                              <i className="fa fa-edit" />
-                              Edit Stock
-                            </Button>
+                          {/* Collapsible Actions */}
+                          {this.state.showStockActions?.[stock.id || stock.order] && (
+                            <div className="d-flex flex-column gap-2">
+                              <div className="d-grid gap-2">
+                                <Button
+                                  variant="outline-primary"
+                                  size="sm"
+                                  onClick={() => this.toggleUpdateBarcode(stock.order)}
+                                  className="d-flex align-items-center gap-2 justify-content-center"
+                                >
+                                  <i className="fa fa-barcode" />
+                                  Update Barcode
+                                </Button>
+                                
+                                <Button
+                                  variant="outline-primary"
+                                  size="sm"
+                                  onClick={() => this.toggleUpdatePrice(stock)}
+                                  className="d-flex align-items-center gap-2 justify-content-center"
+                                >
+                                  <i className="fa fa-edit" />
+                                  Edit Price & Qty
+                                </Button>
+
+                                {/* Move Stock Button - Show only when there's stock to move */}
+                                {stock.in_stock > 0 && (
+                                  <Button
+                                    variant="outline-info"
+                                    size="sm"
+                                    onClick={() => this.handleMoveStock(stock)}
+                                    className="d-flex align-items-center gap-2 justify-content-center"
+                                    title={`Move stock to another branch (${stock.in_stock} available)`}
+                                  >
+                                    <i className="fa fa-exchange-alt" />
+                                    Move Stock
+                                  </Button>
+                                )}
+
+                                {(!stock.movements_from?.length && !stock.movements_to?.length) && (
+                                  <Button
+                                    variant="outline-warning"
+                                    size="sm"
+                                    onClick={() => this.toggleUpdateStock(stock)}
+                                    className="d-flex align-items-center gap-2 justify-content-center"
+                                  >
+                                    <i className="fa fa-edit" />
+                                    Edit Stock
+                                  </Button>
+                                )}
+
+                                {(stock.quantity_sold === 0 && (!stock.movements_from?.length && !stock.movements_to?.length)) && (
+                                  <Button
+                                    variant="outline-danger"
+                                    size="sm"
+                                    onClick={() => this.handleDeleteStock(stock)}
+                                    className="d-flex align-items-center gap-2 justify-content-center"
+                                    title="Delete stock (only available when no items have been sold or moved)"
+                                  >
+                                    <i className="fa fa-trash" />
+                                    Delete
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
                           )}
-                                                  
-                         {(stock.quantity_sold === 0 && (!stock.movements_from?.length && !stock.movements_to?.length)) && (
-                              <Button
-                                variant="outline-danger"
-                                size="sm"
-                                onClick={() => this.handleDeleteStock(stock)}
-                                className="d-flex align-items-center gap-2"
-                                title="Delete stock (only available when no items have been sold or moved)"
-                              >
-                                <i className="fa fa-trash" />
-                                Delete
-                              </Button>
-                            )}
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </Table>
             </div>
@@ -1274,14 +1385,26 @@ export class StockIndex extends Component {
               {stocks.length < 1 && (
                 <div className="text-center py-5">
                   <div className="text-muted">
-                    <i className="fa fa-inbox fa-2x mb-3 d-block" />
-                    <h6 className="mb-2">No Stocks Found</h6>
-                    <p className="mb-0 small">
+                    <i className="fa fa-inbox fa-3x mb-3 d-block opacity-50" />
+                    <h5 className="mb-2">No Stocks Found</h5>
+                    <p className="mb-0">
                       {order || start_date || end_date
-                        ? 'No stocks available for the selected filters'
-                        : 'No stocks available for the selected date range'
+                        ? 'No stocks match your current filter criteria. Try adjusting your filters.'
+                        : 'No stocks are available for this branch yet. Create your first stock entry.'
                       }
                     </p>
+                    {!order && !start_date && !end_date && (
+                      <div className="mt-3">
+                        <Button
+                          variant="primary"
+                          onClick={this.handleCreateStock}
+                          className="d-flex align-items-center gap-2 mx-auto"
+                        >
+                          <i className="fa fa-plus" />
+                          Create First Stock
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1316,7 +1439,7 @@ export class StockIndex extends Component {
           onCancel={this.cancelCreateStock}
           onConfirm={this.confirmCreateStock}
           creating={creating}
-          products={allProducts} // Use allProducts instead of products
+          products={allProducts}
           currentBranch={currentBranch}
           formData={formData}
           formErrors={formErrors}
@@ -1324,16 +1447,15 @@ export class StockIndex extends Component {
           handleSelectChange={this.handleSelectChange}
           barcodeInputRef={this.barcodeInputRef}
           onProductsUpdate={this.handleProductsUpdate}
-          //onStockCreated={reloadStockData}
         />
 
-        <EditStock 
-          currentBranch={currentBranch} 
-          show={showEditModal} 
-          stock={updateStock} 
-          products={allProducts} 
-          onClose={this.cancelEditStock}  
-          onProductsUpdate={this.handleProductsUpdate} 
+        <EditStock
+          currentBranch={currentBranch}
+          show={showEditModal}
+          stock={updateStock}
+          products={allProducts}
+          onClose={this.cancelEditStock}
+          onProductsUpdate={this.handleProductsUpdate}
         />
 
         <MoveStockModal
@@ -1358,6 +1480,66 @@ export class StockIndex extends Component {
           deleting={deleting}
           stock={stockToDelete}
         />
+
+        <style jsx>{`
+          .stock-details {
+            min-width: 280px;
+          }
+          
+          .expanded-details {
+            animation: slideDown 0.3s ease-in-out;
+          }
+          
+          @keyframes slideDown {
+            from {
+              opacity: 0;
+              max-height: 0;
+            }
+            to {
+              opacity: 1;
+              max-height: 500px;
+            }
+          }
+          
+          .bg-primary-soft {
+            background-color: rgba(13, 110, 253, 0.1);
+          }
+          
+          .bg-success-soft {
+            background-color: rgba(25, 135, 84, 0.1);
+          }
+          
+          .table-hover tbody tr:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+          }
+          
+          .badge {
+            font-weight: 500;
+          }
+          
+          .tracking-wider {
+            letter-spacing: 0.05em;
+          }
+          
+          .btn-icon {
+            width: 38px;
+            height: 38px;
+          }
+          
+          .react-select-container .react-select__control {
+            border-color: #d1d5db;
+            box-shadow: none;
+          }
+          
+          .react-select-container .react-select__control:hover {
+            border-color: #9ca3af;
+          }
+          
+          .react-select-container .react-select__control--is-focused {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 1px #3b82f6;
+          }
+        `}</style>
       </>
     );
   }
