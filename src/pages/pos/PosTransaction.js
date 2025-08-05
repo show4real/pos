@@ -412,7 +412,8 @@ export class PosTransaction extends Component {
                           <small className="text-muted">{moment(transaction.created_at).format('h:mm A')}</small>
                         </td>
                         <td className="py-3 text-center">
-                          <Button
+                          <ButtonGroup>
+                            <Button
                             variant="outline-primary"
                             size="sm"
                             className="d-flex align-items-center gap-1 mx-auto"
@@ -421,6 +422,16 @@ export class PosTransaction extends Component {
                             <i className="fas fa-eye" style={{ fontSize: '12px' }}></i>
                             View Details
                           </Button>
+                           <Button
+                            variant="outline-primary"
+                            onClick={() => {
+                              this.props.history.push("/pos/" + transaction.invoice_id);
+                            }}
+                            size="sm"
+                          >
+                            Edit
+                          </Button>
+                          </ButtonGroup>
                         </td>
                       </tr>
                     ))}
