@@ -16,6 +16,7 @@ import {
   FormControl,
   FormGroup,
   FormLabel,
+  FormSelect,
   Alert,
   Badge,
 } from "@themesberg/react-bootstrap";
@@ -27,6 +28,7 @@ export class Barcode extends Component {
     super(props);
     this.state = {
       search: "",
+      filterCount: "all", // New filter state
       page: 1,
       rows: 10,
       loading: false,
@@ -52,11 +54,18 @@ export class Barcode extends Component {
   }
 
   getBarcodes = async () => {
-    const { page, rows, search } = this.state;
+    const { page, rows, search, filterCount } = this.state;
     this.setState({ loading: true });
     
     try {
-      const res = await getbarcodes({ page, rows, search });
+      const params = { 
+        page, 
+        rows, 
+        search: search.trim(),
+        filter_count: filterCount
+      };
+      
+      const res = await getbarcodes(params);
       this.setState({
         loading: false,
         barcodes: res.barcodes.data,
@@ -78,7 +87,36 @@ export class Barcode extends Component {
     toast[type](message);
   };
 
-  // FIXED: Generate barcodes using addBarcodes service
+  // Generate barcode pattern - Fixed version
+  generateBarcodePattern = (value) => {
+    const chars = value.toString();
+    let barsData = [];
+    
+    for (let i = 0; i < chars.length; i++) {
+      const charCode = chars.charCodeAt(i);
+      // Create different bar widths based on character codes
+      const barWidth = (charCode % 4) + 1;
+      const spaceWidth = ((charCode * 3) % 3) + 1;
+      
+      barsData.push({ type: 'bar', width: barWidth * 2 });
+      barsData.push({ type: 'space', width: spaceWidth });
+    }
+    
+    return barsData;
+  };
+
+  // Convert bars data to HTML string
+  generateBarcodeHTML = (barsData) => {
+    return barsData.map(item => {
+      if (item.type === 'bar') {
+        return `<div class="bar" style="width: ${item.width}px; height: 100%; background-color: #000; display: inline-block; margin: 0;"></div>`;
+      } else {
+        return `<div class="space" style="width: ${item.width}px; height: 100%; background-color: white; display: inline-block; margin: 0;"></div>`;
+      }
+    }).join('');
+  };
+
+  // Generate barcodes using addBarcodes service
   handleGenerateBarcodes = async () => {
     const { numberOfBarcodes } = this.state;
     
@@ -109,7 +147,7 @@ export class Barcode extends Component {
     }
   };
 
-  // ADDED: Handle edit barcode
+  // Handle edit barcode
   handleEditBarcode = (barcode) => {
     this.setState({
       showEditModal: true,
@@ -118,7 +156,7 @@ export class Barcode extends Component {
     });
   };
 
-  // ADDED: Save edited barcode using updateBarcode service
+  // Save edited barcode using updateBarcode service
   handleSaveEditedBarcode = async () => {
     const { editingBarcode, editBarcodeValue } = this.state;
     
@@ -184,7 +222,7 @@ export class Barcode extends Component {
     }
   };
 
-  // FIXED: Handle print selected barcodes with actual printing functionality
+  // Handle print selected barcodes
   handlePrintSelected = () => {
     const { selectedBarcodes, barcodes } = this.state;
     if (selectedBarcodes.length === 0) {
@@ -196,76 +234,134 @@ export class Barcode extends Component {
     this.setState({ showPrintModal: true });
   };
 
-  // ADDED: Actual print functionality
+  // Print functionality with improved barcode rendering
   handlePrintNow = () => {
     const { selectedBarcodes, barcodes } = this.state;
     const selectedBarcodeData = barcodes.filter(b => selectedBarcodes.includes(b.id));
 
+    // Generate barcode HTML for each barcode
+    const barcodeItems = selectedBarcodeData.map((barcode) => {
+      const barsData = this.generateBarcodePattern(barcode.name);
+      const barcodeHTML = this.generateBarcodeHTML(barsData);
+      
+      return `
+        <div class="barcode-item">
+          <div class="barcode-lines">
+            ${barcodeHTML}
+          </div>
+          <div class="barcode-value">${barcode.name}</div>
+        </div>
+      `;
+    }).join('');
+
     // Create a new window for printing
     const printWindow = window.open('', '_blank');
     
-    // Generate HTML content for printing
+    // Generate HTML content for printing with improved CSS
     const printContent = `
       <!DOCTYPE html>
       <html>
         <head>
           <title>Barcode Print</title>
           <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            
             body { 
               font-family: Arial, sans-serif; 
               margin: 20px;
               font-size: 12px;
+              background: white;
             }
+            
             .barcode-item { 
               display: inline-block;
-              margin: 10px;
-              padding: 15px;
+              margin: 15px;
+              padding: 20px;
               border: 2px solid #000;
               text-align: center;
-              width: 200px;
+              width: 220px;
               page-break-inside: avoid;
+              vertical-align: top;
+              background: white;
             }
+            
             .barcode-value { 
               font-family: 'Courier New', monospace;
               font-size: 14px;
               font-weight: bold;
-              margin: 10px 0;
-              letter-spacing: 2px;
-            }
-            .barcode-id {
-              font-size: 10px;
-              color: #666;
-            }
-            .barcode-bars {
-              font-family: 'Courier New', monospace;
-              font-size: 20px;
+              margin: 15px 0 5px 0;
               letter-spacing: 1px;
-              margin: 5px 0;
+              color: #000;
             }
+            
+            .barcode-lines {
+              display: flex;
+              justify-content: center;
+              align-items: flex-end;
+              height: 60px;
+              margin: 15px 0;
+              background: white;
+              padding: 5px;
+              border: 1px solid #ccc;
+            }
+            
+            .bar {
+              background-color: #000 !important;
+              height: 100% !important;
+              display: inline-block !important;
+              margin: 0 !important;
+              vertical-align: bottom;
+            }
+            
+            .space {
+              background-color: white !important;
+              height: 100% !important;
+              display: inline-block !important;
+              margin: 0 !important;
+              vertical-align: bottom;
+            }
+            
             @media print {
-              body { margin: 0; }
+              body { 
+                margin: 10px;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              
               .barcode-item { 
                 break-inside: avoid;
-                margin: 5px;
+                margin: 10px;
+                page-break-inside: avoid;
+              }
+              
+              .bar {
+                background-color: #000 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              
+              .space {
+                background-color: white !important;
               }
             }
           </style>
         </head>
         <body>
-          <h2 style="text-align: center; margin-bottom: 30px;">Barcode Print Sheet</h2>
-          ${selectedBarcodeData.map(barcode => `
-            <div class="barcode-item">
-              <div class="barcode-id">ID: ${barcode.id}</div>
-              <div class="barcode-bars">||||| |||| | ||| ||||</div>
-              <div class="barcode-value">${barcode.name}</div>
-              <div style="font-size: 8px; margin-top: 5px;">
-                Used: ${barcode.order_items_count || 0} times
-              </div>
-            </div>
-          `).join('')}
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h3>Barcode Print - ${new Date().toLocaleDateString()}</h3>
+          </div>
+          ${barcodeItems}
+          
           <script>
             window.onload = function() {
-              window.print();
+              setTimeout(function() {
+                window.print();
+              }, 500);
+              
               window.onafterprint = function() {
                 window.close();
               };
@@ -286,8 +382,12 @@ export class Barcode extends Component {
     });
   };
 
-  // ADDED: Print single barcode
+  // Print single barcode - Fixed version
   handlePrintSingle = (barcode) => {
+    // Generate barcode pattern
+    const barsData = this.generateBarcodePattern(barcode.name);
+    const barcodeHTML = this.generateBarcodeHTML(barsData);
+    
     const printWindow = window.open('', '_blank');
     
     const printContent = `
@@ -296,44 +396,96 @@ export class Barcode extends Component {
         <head>
           <title>Barcode Print - ${barcode.name}</title>
           <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            
             body { 
               font-family: Arial, sans-serif; 
               margin: 50px;
               text-align: center;
+              background: white;
             }
+            
             .barcode-item { 
               display: inline-block;
-              padding: 30px;
+              padding: 40px;
               border: 3px solid #000;
               margin: 20px;
+              background: white;
             }
+            
             .barcode-value { 
               font-family: 'Courier New', monospace;
               font-size: 18px;
               font-weight: bold;
-              margin: 15px 0;
-              letter-spacing: 3px;
-            }
-            .barcode-bars {
-              font-family: 'Courier New', monospace;
-              font-size: 24px;
+              margin: 20px 0 10px 0;
               letter-spacing: 2px;
-              margin: 10px 0;
+              color: #000;
+            }
+            
+            .barcode-lines {
+              display: flex;
+              justify-content: center;
+              align-items: flex-end;
+              height: 80px;
+              margin: 20px 0;
+              background: white;
+              padding: 10px;
+              border: 1px solid #ccc;
+            }
+            
+            .bar {
+              background-color: #000 !important;
+              height: 100% !important;
+              display: inline-block !important;
+              margin: 0 !important;
+              vertical-align: bottom;
+            }
+            
+            .space {
+              background-color: white !important;
+              height: 100% !important;
+              display: inline-block !important;
+              margin: 0 !important;
+              vertical-align: bottom;
+            }
+            
+            @media print {
+              body { 
+                margin: 30px;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              
+              .bar {
+                background-color: #000 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              
+              .space {
+                background-color: white !important;
+              }
             }
           </style>
         </head>
         <body>
           <div class="barcode-item">
-            <div>ID: ${barcode.id}</div>
-            <div class="barcode-bars">||||| |||| | ||| ||||</div>
-            <div class="barcode-value">${barcode.name}</div>
-            <div style="font-size: 12px; margin-top: 10px;">
-              Used: ${barcode.order_items_count || 0} times
+            <div class="barcode-lines">
+              ${barcodeHTML}
             </div>
+            <div class="barcode-value">${barcode.name}</div>
           </div>
+          
           <script>
             window.onload = function() {
-              window.print();
+              setTimeout(function() {
+                window.print();
+              }, 500);
+              
               window.onafterprint = function() {
                 window.close();
               };
@@ -391,11 +543,33 @@ export class Barcode extends Component {
     }, 500); // 500ms delay
   };
 
+  // Handle filter change
+  handleFilterChange = (value) => {
+    this.setState({ 
+      filterCount: value, 
+      page: 1 
+    }, () => {
+      this.getBarcodes();
+    });
+  };
+
+  // Clear all filters and search
+  handleClearFilters = () => {
+    this.setState({
+      search: "",
+      filterCount: "all",
+      page: 1
+    }, () => {
+      this.getBarcodes();
+    });
+  };
+
   render() {
     const {
       barcodes,
       total,
       search,
+      filterCount,
       loading,
       selectedBarcodes,
       selectAll,
@@ -408,6 +582,10 @@ export class Barcode extends Component {
       page,
       rows
     } = this.state;
+
+    // Calculate filter counts for display
+    const usedCount = barcodes.filter(b => b.order_items_count > 0).length;
+    const unusedCount = barcodes.filter(b => b.order_items_count === 0).length;
 
     return (
       <>
@@ -452,12 +630,11 @@ export class Barcode extends Component {
             </ButtonGroup>
           </Col>
           <Col lg="6">
-            <div className="d-flex justify-content-end">
+            <div className="d-flex justify-content-end gap-2">
               <FormControl
                 type="text"
                 placeholder="Search by barcode or product name..."
-                className="me-2"
-                style={{ maxWidth: "300px" }}
+                style={{ maxWidth: "250px" }}
                 value={search}
                 onChange={(e) => this.handleSearchChange(e.target.value)}
                 onKeyUp={(e) => {
@@ -466,6 +643,15 @@ export class Barcode extends Component {
                   }
                 }}
               />
+              <FormSelect
+                style={{ maxWidth: "150px" }}
+                value={filterCount}
+                onChange={(e) => this.handleFilterChange(e.target.value)}
+              >
+                <option value="all">All Barcodes</option>
+                <option value="greater_than_zero">Used ({usedCount})</option>
+                <option value="equals_zero">Unused ({unusedCount})</option>
+              </FormSelect>
               <Button
                 variant="outline-secondary"
                 size="sm"
@@ -474,14 +660,56 @@ export class Barcode extends Component {
               >
                 🔍
               </Button>
+              {(search || filterCount !== "all") && (
+                <Button
+                  variant="outline-warning"
+                  size="sm"
+                  onClick={this.handleClearFilters}
+                  title="Clear all filters"
+                >
+                  ✖️
+                </Button>
+              )}
             </div>
           </Col>
         </Row>
 
+        {/* Filter Status Alert */}
+        {(search || filterCount !== "all") && (
+          <Row className="mb-3">
+            <Col lg="12">
+              <Alert variant="info" className="py-2">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong>Filters Applied:</strong>
+                    {search && <Badge variant="secondary" className="ms-2">Search: "{search}"</Badge>}
+                    {filterCount !== "all" && (
+                      <Badge variant="secondary" className="ms-2">
+                        {filterCount === "greater_than_zero" ? "Used Only" : "Unused Only"}
+                      </Badge>
+                    )}
+                  </div>
+                  <Button 
+                    variant="outline-secondary" 
+                    size="sm" 
+                    onClick={this.handleClearFilters}
+                  >
+                    Clear All
+                  </Button>
+                </div>
+              </Alert>
+            </Col>
+          </Row>
+        )}
+
         <Card border="light" className="shadow-sm">
           <Card.Header className="border-bottom d-flex justify-content-between align-items-center">
             <h6 className="m-0">Barcode Management</h6>
-            <Badge variant="secondary">{total} Total</Badge>
+            <div className="d-flex gap-2">
+              <Badge variant="secondary">{total} Total</Badge>
+              <Badge variant="success">{usedCount} Used</Badge>
+              <Badge variant="warning">{unusedCount} Unused</Badge>
+            </div>
           </Card.Header>
           <Card.Body className="p-0">
             <Table responsive className="table-centered table-nowrap mb-0">
@@ -496,7 +724,10 @@ export class Barcode extends Component {
                   </th>
                   <th>ID</th>
                   <th>Barcode</th>
-                  <th>Used Count</th>
+                  <th>
+                    Used Count
+                  
+                  </th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -515,7 +746,9 @@ export class Barcode extends Component {
                       <td>
                         <code>{barcode.name}</code>
                       </td>
-                      <td>{barcode.order_items_count}</td>
+                      <td>
+                      {barcode.order_items_count}
+                      </td>
                       <td>
                         <ButtonGroup size="sm">
                           <Button
@@ -540,10 +773,22 @@ export class Barcode extends Component {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="6" className="text-center py-4">
+                    <td colSpan="5" className="text-center py-4">
                       <div className="text-muted">
-                        {search ? `No barcodes found matching "${search}"` : "No barcodes available"}
+                        {search || filterCount !== "all" 
+                          ? `No barcodes found matching current filters` 
+                          : "No barcodes available"}
                       </div>
+                      {(search || filterCount !== "all") && (
+                        <Button 
+                          variant="outline-primary" 
+                          size="sm" 
+                          className="mt-2"
+                          onClick={this.handleClearFilters}
+                        >
+                          Clear Filters
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 )}

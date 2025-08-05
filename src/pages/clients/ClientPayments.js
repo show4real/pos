@@ -17,7 +17,7 @@ const ClientPayments = () => {
     last_paid: 0,
     // Remove inconsistent fields to avoid confusion
   });
-  const [pagination, setPagination] = useState({ rows: 5, page: 1 });
+  const [pagination, setPagination] = useState({ rows: 20000, page: 1 });
   const [loading, setLoading] = useState(false);
   const [company, setCompany] = useState({});
   const [error, setError] = useState(null);
@@ -294,7 +294,7 @@ const ClientPayments = () => {
           </Card.Body>
 
           {/* Pagination */}
-          {data.client_invoices_payments?.total > 0 && (
+          {/* {data.client_invoices_payments?.total > 0 && (
             <Card.Footer className="bg-white">
               <Row>
                 <Col className="d-flex justify-content-center">
@@ -310,7 +310,7 @@ const ClientPayments = () => {
                 </Col>
               </Row>
             </Card.Footer>
-          )}
+          )} */}
 
           {/* Invoice Data */}
           {data.client_invoices_payments?.data?.map((invoice, index) => {
