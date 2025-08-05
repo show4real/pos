@@ -36,6 +36,10 @@ export class PosTransaction extends Component {
       total: 0,
       pos_sales: [],
       total_sales: 0,
+      total_amount_paid: 0,
+      total_amount: 0,
+      total_delievery_fee: 0,
+      total_discount: 0,
       fromdate: moment().startOf('month'),
       todate: moment().endOf('day'),
       u: JSON.parse(localStorage.getItem("user")),
@@ -55,7 +59,7 @@ export class PosTransaction extends Component {
   getPosTransactions = () => {
     const { page, rows, order, todate, fromdate, search, user } = this.state;
     this.setState({ loading: true });
-    
+
     getPosTransactions2({ page, rows, fromdate, todate, order, user, search }).then(
       (res) => {
         this.setState({
@@ -63,7 +67,12 @@ export class PosTransaction extends Component {
           pos_sales: res.pos_sales.data,
           users: res.users,
           total: res.pos_sales.total,
-          total_sales: res.total_sales
+          total_sales: res.total_sales,
+          total_amount: res.total_amount,
+          total_amount_paid: res.total_amount_paid,
+          total_discount: res.total_discount,
+          total_delievery_fee: res.total_delivery_fee
+
         });
       },
       (error) => {
@@ -88,9 +97,9 @@ export class PosTransaction extends Component {
       'sales_order': { variant: 'primary', icon: 'fas fa-store', label: 'Internal Sales' },
       'online_order': { variant: 'info', icon: 'fas fa-globe', label: 'Online Sales' }
     };
-    
+
     const config = channelConfig[channel] || { variant: 'secondary', icon: 'fas fa-question', label: channel };
-    
+
     return (
       <Badge bg={config.variant} className="d-flex align-items-center gap-1" style={{ fontSize: '14px' }}>
         <i className={config.icon} style={{ fontSize: '12px' }}></i>
@@ -142,7 +151,11 @@ export class PosTransaction extends Component {
       fromdate,
       todate,
       transaction_id,
-      total_sales
+      total_sales,
+      total_amount,
+      total_amount_paid,
+      total_discount,
+      total_delievery_fee
     } = this.state;
 
     const unique_transaction = Array.from(
@@ -185,15 +198,37 @@ export class PosTransaction extends Component {
                     </h4>
                   </div>
                 </div>
-                <div className="text-end">
+                <div className="d-flex gap-3">
                   <div className="bg-gradient-success text-white rounded-3 p-3 shadow-sm">
                     <div className="small text-white-50 mb-1">Total Sales</div>
                     <div className="h5 mb-0 fw-bold">{this.formatCurrency(total_sales)}</div>
+                  </div>
+                  
+                  <div className="bg-gradient-warning text-white rounded-3 p-3 shadow-sm">
+                    <div className="small text-white-50 mb-1">Total Discount</div>
+                    <div className="h5 mb-0 fw-bold">{this.formatCurrency(total_discount)}</div>
+                  </div>
+                  <div className="bg-gradient-secondary text-white rounded-3 p-3 shadow-sm">
+                    <div className="small text-white-50 mb-1">Delivery Fees</div>
+                    <div className="h5 mb-0 fw-bold">{this.formatCurrency(total_delievery_fee)}</div>
+                  </div>
+                  <div className="bg-gradient-primary text-white rounded-3 p-3 shadow-sm">
+                    <div className="small text-white-50 mb-1">Total Amount</div>
+                    <div className="h5 mb-0 fw-bold">{this.formatCurrency(total_amount)}</div>
+                  </div>
+                  <div className="bg-gradient-info text-white rounded-3 p-3 shadow-sm">
+                    <div className="small text-white-50 mb-1">Amount Paid</div>
+                    <div className="h5 mb-0 fw-bold">{this.formatCurrency(total_amount_paid)}</div>
+                  </div>
+                  <div className="bg-gradient-danger text-white rounded-3 p-3 shadow-sm">
+                    <div className="small text-white-50 mb-1">Balance</div>
+                    <div className="h5 mb-0 fw-bold">{this.formatCurrency(total_amount - total_amount_paid)}</div>
                   </div>
                 </div>
               </div>
             </Col>
           </Row>
+
 
           {/* Filters Section */}
           <Card className="shadow-sm mb-4 border-0">
@@ -354,8 +389,8 @@ export class PosTransaction extends Component {
                       <tr key={key} className="align-middle">
                         <td className="py-3">
                           <div className="d-flex align-items-center">
-                            <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" 
-                                 style={{ width: 40, height: 40 }}>
+                            <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+                              style={{ width: 40, height: 40 }}>
                               <i className="fas fa-user text-white small"></i>
                             </div>
                             <div>
@@ -377,8 +412,8 @@ export class PosTransaction extends Component {
                           <small className="text-muted">{moment(transaction.created_at).format('h:mm A')}</small>
                         </td>
                         <td className="py-3 text-center">
-                          <Button 
-                            variant="outline-primary" 
+                          <Button
+                            variant="outline-primary"
                             size="sm"
                             className="d-flex align-items-center gap-1 mx-auto"
                             onClick={() => this.toggleViewTransaction(transaction.transaction_id)}

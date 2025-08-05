@@ -1,7 +1,8 @@
 import React, { Component } from "react";
 import { Input, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
-import { getbarcodes, updateBarcode } from "../../services/brandService";
+import { getbarcodes, updateBarcode, addBarcodes } from "../../services/brandService";
 import { toast } from "react-toastify";
+import { Pagination } from "antd";
 
 import {
   Col,
@@ -16,11 +17,10 @@ import {
   FormGroup,
   FormLabel,
   Alert,
+  Badge,
 } from "@themesberg/react-bootstrap";
 
 import SpinDiv from "../components/SpinDiv";
-import { editBarcode } from "../../services/purchaseOrderService";
-import EditBarcode from "../purchase/EditBarcode";
 
 export class Barcode extends Component {
   constructor(props) {
@@ -31,493 +31,364 @@ export class Barcode extends Component {
       rows: 10,
       loading: false,
       barcodes: [],
-      value: "",
       total: 0,
-      selectedBarcodes: new Set(),
+      selectedBarcodes: [],
       selectAll: false,
+
+      showGenerateModal: false,
+      numberOfBarcodes: 1,
+      generatedBarcodes: [],
+      showPrintModal: false,
+      
+      // Edit modal states
       showEditModal: false,
       editingBarcode: null,
-      editFormData: {
-        barcode: "",
-        product_name: "",
-        id:""
-      },
-      scannerInput: "",
-      scannerMode: false,
-      updating: false,
-      printing: false,
+      editBarcodeValue: "",
     };
-    
-    // Ref for scanner input
-    this.scannerInputRef = React.createRef();
   }
 
   componentDidMount() {
     this.getBarcodes();
-    // Add event listener for scanner input
-    document.addEventListener('keydown', this.handleScannerInput);
   }
 
-  componentWillUnmount() {
-    // Remove event listener
-    document.removeEventListener('keydown', this.handleScannerInput);
-  }
-
-  // Handle barcode scanner input
-  handleScannerInput = (e) => {
-    if (!this.state.scannerMode) return;
-    
-    // Most barcode scanners end with Enter key
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      this.searchByBarcode(this.state.scannerInput);
-      this.setState({ scannerInput: "" });
-    } else if (e.key.length === 1) {
-      // Add character to scanner input
-      this.setState(prevState => ({
-        scannerInput: prevState.scannerInput + e.key
-      }));
-    }
-  };
-
-  searchByBarcode = (barcode) => {
-    if (!barcode.trim()) return;
-    
-    this.setState({ search: barcode.trim() }, () => {
-      this.getBarcodes();
-    });
-  };
-
-  showToast = (msg, type = "success") => {
-    const color = type === "error" ? "red" : "green";
-    toast(<div style={{ padding: 20, color }}>{msg}</div>);
-  };
-
-  getBarcodes = () => {
+  getBarcodes = async () => {
     const { page, rows, search } = this.state;
     this.setState({ loading: true });
-    getbarcodes({ page, rows, search }).then(
-      (res) => {
-        this.setState({
-          loading: false,
-          barcodes: res.barcodes.data,
-          total: res.barcodes.total,
-          selectedBarcodes: new Set(), // Reset selection
-          selectAll: false,
-        });
-      },
-      (error) => {
-        this.setState({ loading: false });
-        this.showToast("Error loading barcodes", "error");
-      }
-    );
-  };
-
-  onChange = (e, state) => {
-    this.setState({ [state]: e });
-  };
-
-  // Handle individual barcode selection
-  handleBarcodeSelect = (barcodeId) => {
-    this.setState(prevState => {
-      const newSelected = new Set(prevState.selectedBarcodes);
-      if (newSelected.has(barcodeId)) {
-        newSelected.delete(barcodeId);
-      } else {
-        newSelected.add(barcodeId);
-      }
-      
-      const selectAll = newSelected.size === prevState.barcodes.length;
-      
-      return {
-        selectedBarcodes: newSelected,
-        selectAll
-      };
-    });
-  };
-
-  // Handle select all toggle
-  handleSelectAll = () => {
-    this.setState(prevState => {
-      if (prevState.selectAll) {
-        return {
-          selectedBarcodes: new Set(),
-          selectAll: false
-        };
-      } else {
-        const allIds = new Set(prevState.barcodes.map(b => b.id || b.barcode));
-        return {
-          selectedBarcodes: allIds,
-          selectAll: true
-        };
-      }
-    });
-  };
-
-  // Generate Code 128 barcode pattern
-  generateBarcodePattern = (text) => {
-    // Simplified Code 128 pattern generator
-    // This creates a visual representation similar to Code 128
-    const patterns = {
-      '0': '11011001100', '1': '11001101100', '2': '11001100110', '3': '10010011000',
-      '4': '10010001100', '5': '10001001100', '6': '10011001000', '7': '10011000100',
-      '8': '10001100100', '9': '11001001000', 'A': '11001000100', 'B': '11000100100',
-      'C': '10110011100', 'D': '10011011100', 'E': '10011001110', 'F': '10111001000',
-      'G': '10011101000', 'H': '10011100100', 'I': '11001110010', 'J': '11001011100',
-      'K': '11001001110', 'L': '11011100100', 'start': '11010000100', 'stop': '1100011101011'
-    };
     
-    let result = patterns.start || '11010000100';
-    for (let char of text.toUpperCase()) {
-      result += patterns[char] || patterns['0'];
+    try {
+      const res = await getbarcodes({ page, rows, search });
+      this.setState({
+        loading: false,
+        barcodes: res.barcodes.data,
+        total: res.barcodes.total,
+        selectedBarcodes: [],
+        selectAll: false,
+      });
+    } catch (error) {
+      this.setState({ loading: false });
+      this.showToast("Error loading barcodes", "error");
     }
-    result += patterns.stop;
-    
-    return result;
   };
 
-  // Generate printable barcode HTML with proper A4 layout
-  generatePrintHTML = (barcodesToPrint) => {
-    const barcodeHtml = barcodesToPrint.map(barcode => {
-      const pattern = this.generateBarcodePattern(barcode.barcode);
-      const bars = pattern.split('').map((bit, index) => 
-        `<div class="bar ${bit === '1' ? 'black' : 'white'}" key="${index}"></div>`
-      ).join('');
-      
-      return `
-        <div class="barcode-container">
-          <div class="barcode-visual">
-            ${bars}
-          </div>
-          <div class="barcode-text">${barcode.barcode}</div>
-          <div class="product-name">${barcode.product_name}</div>
-        </div>
-      `;
-    }).join('');
+  onChange = (value, field) => {
+    this.setState({ [field]: value });
+  };
 
+  showToast = (message, type = "success") => {
+    toast[type](message);
+  };
+
+  // FIXED: Generate barcodes using addBarcodes service
+  handleGenerateBarcodes = async () => {
+    const { numberOfBarcodes } = this.state;
+    
+    this.setState({ loading: true });
+    
+    try {
+      const response = await addBarcodes({ count: numberOfBarcodes });
+      
+      if (response && response.success) {
+        this.showToast(`Successfully generated ${numberOfBarcodes} barcode${numberOfBarcodes > 1 ? 's' : ''}`, "success");
+        // Refresh the barcode list first, then close modal
+        await this.getBarcodes();
+        this.setState({ 
+          showGenerateModal: false,
+          numberOfBarcodes: 1,
+          loading: false
+        });
+      } else {
+        throw new Error(response.message || "Failed to generate barcodes");
+      }
+    } catch (error) {
+      this.setState({ 
+        loading: false,
+        showGenerateModal: false,
+        numberOfBarcodes: 1
+      });
+      this.showToast(error.message || "Error generating barcodes", "error");
+    }
+  };
+
+  // ADDED: Handle edit barcode
+  handleEditBarcode = (barcode) => {
+    this.setState({
+      showEditModal: true,
+      editingBarcode: barcode,
+      editBarcodeValue: barcode.name
+    });
+  };
+
+  // ADDED: Save edited barcode using updateBarcode service
+  handleSaveEditedBarcode = async () => {
+    const { editingBarcode, editBarcodeValue } = this.state;
+    
+    if (!editBarcodeValue.trim()) {
+      this.showToast("Barcode value cannot be empty", "error");
+      return;
+    }
+
+    this.setState({ loading: true });
+
+    try {
+      const response = await updateBarcode(editingBarcode.id, {
+        name: editBarcodeValue.trim()
+      });
+
+      if (response && response.success) {
+        this.showToast("Barcode updated successfully", "success");
+        // Refresh the barcode list first, then close modal
+        await this.getBarcodes();
+        this.setState({
+          showEditModal: false,
+          editingBarcode: null,
+          editBarcodeValue: "",
+          loading: false
+        });
+      } else {
+        throw new Error(response.message || "Failed to update barcode");
+      }
+    } catch (error) {
+      this.setState({ 
+        loading: false,
+        showEditModal: false,
+        editingBarcode: null,
+        editBarcodeValue: ""
+      });
+      this.showToast(error.message || "Error updating barcode", "error");
+    }
+  };
+
+  // Handle checkbox selection
+  handleSelectBarcode = (barcodeId) => {
+    const { selectedBarcodes } = this.state;
+    const updatedSelection = selectedBarcodes.includes(barcodeId)
+      ? selectedBarcodes.filter(id => id !== barcodeId)
+      : [...selectedBarcodes, barcodeId];
+    
+    this.setState({
+      selectedBarcodes: updatedSelection,
+      selectAll: updatedSelection.length === this.state.barcodes.length
+    });
+  };
+
+  // Handle select all
+  handleSelectAll = () => {
+    const { selectAll, barcodes } = this.state;
+    if (selectAll) {
+      this.setState({ selectedBarcodes: [], selectAll: false });
+    } else {
+      this.setState({ 
+        selectedBarcodes: barcodes.map(b => b.id), 
+        selectAll: true 
+      });
+    }
+  };
+
+  // FIXED: Handle print selected barcodes with actual printing functionality
+  handlePrintSelected = () => {
+    const { selectedBarcodes, barcodes } = this.state;
+    if (selectedBarcodes.length === 0) {
+      this.showToast("Please select barcodes to print", "warning");
+      return;
+    }
+    
+    const selectedBarcodeData = barcodes.filter(b => selectedBarcodes.includes(b.id));
+    this.setState({ showPrintModal: true });
+  };
+
+  // ADDED: Actual print functionality
+  handlePrintNow = () => {
+    const { selectedBarcodes, barcodes } = this.state;
+    const selectedBarcodeData = barcodes.filter(b => selectedBarcodes.includes(b.id));
+
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    
+    // Generate HTML content for printing
     const printContent = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Barcode Print - A4</title>
+          <title>Barcode Print</title>
           <style>
-            @page {
-              size: A4;
-              margin: 20mm;
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 20px;
+              font-size: 12px;
             }
-            
-            * {
-              box-sizing: border-box;
-            }
-            
-            body {
-              margin: 0;
-              padding: 0;
-              font-family: 'Arial', sans-serif;
-              background: white;
-            }
-            
-            .print-header {
-              text-align: center;
-              margin-bottom: 30px;
-              border-bottom: 2px solid #333;
-              padding-bottom: 15px;
-            }
-            
-            .print-header h1 {
-              margin: 0;
-              font-size: 24px;
-              color: #333;
-            }
-            
-            .print-header p {
-              margin: 5px 0 0 0;
-              color: #666;
-              font-size: 14px;
-            }
-            
-            .barcode-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 20px;
-              width: 100%;
-            }
-            
-            .barcode-container {
-              border: 2px solid #000;
+            .barcode-item { 
+              display: inline-block;
+              margin: 10px;
               padding: 15px;
+              border: 2px solid #000;
               text-align: center;
-              background: white;
+              width: 200px;
               page-break-inside: avoid;
-              border-radius: 5px;
             }
-            
-            .barcode-visual {
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              height: 60px;
-              margin: 10px 0;
-              background: white;
-              border: 1px solid #ddd;
-              overflow: hidden;
-            }
-            
-            .bar {
-              height: 50px;
-              min-width: 1px;
-              flex: 0 0 auto;
-            }
-            
-            .bar.black {
-              background-color: #000;
-              width: 2px;
-            }
-            
-            .bar.white {
-              background-color: white;
-              width: 1px;
-            }
-            
-            .barcode-text {
+            .barcode-value { 
               font-family: 'Courier New', monospace;
-              font-size: 16px;
+              font-size: 14px;
               font-weight: bold;
               margin: 10px 0;
-              color: #000;
+              letter-spacing: 2px;
+            }
+            .barcode-id {
+              font-size: 10px;
+              color: #666;
+            }
+            .barcode-bars {
+              font-family: 'Courier New', monospace;
+              font-size: 20px;
               letter-spacing: 1px;
+              margin: 5px 0;
             }
-            
-            .product-name {
-              font-size: 12px;
-              color: #333;
-              margin-top: 8px;
-              word-wrap: break-word;
-              line-height: 1.3;
-              max-height: 40px;
-              overflow: hidden;
-            }
-            
             @media print {
-              .no-print {
-                display: none !important;
-              }
-              
-              body {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-              }
-              
-              .barcode-container {
+              body { margin: 0; }
+              .barcode-item { 
                 break-inside: avoid;
-              }
-            }
-            
-            @media screen {
-              body {
-                padding: 20px;
-                background: #f5f5f5;
-              }
-              
-              .no-print {
-                background: #fff;
-                padding: 20px;
-                margin-bottom: 20px;
-                border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-              }
-              
-              .print-area {
-                background: white;
-                padding: 20px;
-                border-radius: 8px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                max-width: 210mm;
-                margin: 0 auto;
+                margin: 5px;
               }
             }
           </style>
         </head>
         <body>
-          <div class="no-print">
-            <h2>📄 Barcode Print Preview</h2>
-            <p><strong>Print Instructions:</strong></p>
-            <ul>
-              <li>Press <kbd>Ctrl+P</kbd> (Windows) or <kbd>Cmd+P</kbd> (Mac) to print</li>
-              <li>Make sure to select "More settings" → "Options" → "Background graphics" for best results</li>
-              <li>Recommended: Use A4 paper size</li>
-            </ul>
-            <button onclick="window.print()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">🖨️ Print Now</button>
-            <hr style="margin: 20px 0;">
-          </div>
-          
-          <div class="print-area">
-            <div class="print-header">
-              <h1>📋 Product Barcodes</h1>
-              <p>Generated on ${new Date().toLocaleDateString()} | Total: ${barcodesToPrint.length} items</p>
+          <h2 style="text-align: center; margin-bottom: 30px;">Barcode Print Sheet</h2>
+          ${selectedBarcodeData.map(barcode => `
+            <div class="barcode-item">
+              <div class="barcode-id">ID: ${barcode.id}</div>
+              <div class="barcode-bars">||||| |||| | ||| ||||</div>
+              <div class="barcode-value">${barcode.name}</div>
+              <div style="font-size: 8px; margin-top: 5px;">
+                Used: ${barcode.order_items_count || 0} times
+              </div>
             </div>
-            
-            <div class="barcode-grid">
-              ${barcodeHtml}
-            </div>
-          </div>
+          `).join('')}
+          <script>
+            window.onload = function() {
+              window.print();
+              window.onafterprint = function() {
+                window.close();
+              };
+            };
+          </script>
         </body>
       </html>
     `;
-    return printContent;
-  };
 
-  // Print single barcode
-  printSingleBarcode = (barcode) => {
-    this.setState({ printing: true });
-    
-    try {
-      const printWindow = window.open('', '_blank', 'width=1000,height=800');
-      const printContent = this.generatePrintHTML([barcode]);
-      
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      
-      // Auto-trigger print dialog after content loads
-      printWindow.onload = () => {
-        setTimeout(() => {
-          printWindow.print();
-        }, 500);
-      };
-      
-      this.showToast("Print dialog opened");
-    } catch (error) {
-      this.showToast("Error opening print dialog", "error");
-    } finally {
-      this.setState({ printing: false });
-    }
-  };
+    printWindow.document.write(printContent);
+    printWindow.document.close();
 
-  // Print selected barcodes
-  printSelectedBarcodes = () => {
-    const { selectedBarcodes, barcodes } = this.state;
-    
-    if (selectedBarcodes.size === 0) {
-      this.showToast("Please select barcodes to print", "error");
-      return;
-    }
-
-    this.setState({ printing: true });
-    
-    try {
-      const barcodesToPrint = barcodes.filter(b => 
-        selectedBarcodes.has(b.id || b.barcode)
-      );
-      
-      const printWindow = window.open('', '_blank', 'width=1000,height=800');
-      const printContent = this.generatePrintHTML(barcodesToPrint);
-      
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      
-      // Auto-trigger print dialog after content loads
-      printWindow.onload = () => {
-        setTimeout(() => {
-          printWindow.print();
-        }, 500);
-      };
-      
-      this.showToast(`Print dialog opened for ${selectedBarcodes.size} barcode(s)`);
-    } catch (error) {
-      this.showToast("Error opening print dialog", "error");
-    } finally {
-      this.setState({ printing: false });
-    }
-  };
-
-  // Open edit modal
-  openEditModal = (barcode) => {
-    this.setState({
-      showEditModal: true,
-      editingBarcode: barcode,
-      editFormData: {
-        barcode: barcode.barcode,
-        product_name: barcode.product_name,
-        id:barcode.id
-      }
+    this.showToast(`Printing ${selectedBarcodes.length} barcodes...`, "success");
+    this.setState({ 
+      showPrintModal: false, 
+      selectedBarcodes: [], 
+      selectAll: false 
     });
   };
 
-  // Close edit modal
-  closeEditModal = () => {
-    this.setState({
-      showEditModal: false,
-      editingBarcode: null,
-      editFormData: {
-        barcode: "",
-        product_name: "",
-        id:""
-      }
-    });
-    this.getBarcodes()
+  // ADDED: Print single barcode
+  handlePrintSingle = (barcode) => {
+    const printWindow = window.open('', '_blank');
+    
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Barcode Print - ${barcode.name}</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 50px;
+              text-align: center;
+            }
+            .barcode-item { 
+              display: inline-block;
+              padding: 30px;
+              border: 3px solid #000;
+              margin: 20px;
+            }
+            .barcode-value { 
+              font-family: 'Courier New', monospace;
+              font-size: 18px;
+              font-weight: bold;
+              margin: 15px 0;
+              letter-spacing: 3px;
+            }
+            .barcode-bars {
+              font-family: 'Courier New', monospace;
+              font-size: 24px;
+              letter-spacing: 2px;
+              margin: 10px 0;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="barcode-item">
+            <div>ID: ${barcode.id}</div>
+            <div class="barcode-bars">||||| |||| | ||| ||||</div>
+            <div class="barcode-value">${barcode.name}</div>
+            <div style="font-size: 12px; margin-top: 10px;">
+              Used: ${barcode.order_items_count || 0} times
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              window.onafterprint = function() {
+                window.close();
+              };
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    this.showToast(`Printing barcode ${barcode.name}`, "success");
   };
 
-  // Handle successful edit - this will be passed to EditBarcode component
-  handleEditSuccess = () => {
-    this.setState({
-      showEditModal: false,
-      editingBarcode: null,
-      editFormData: {
-        barcode: "",
-        product_name: "",
-        id: ""
-      },
-      updating: false
+  // Ant Design pagination handlers
+  handlePageChange = (page, pageSize) => {
+    this.setState({ 
+      page: page,
+      rows: pageSize 
     }, () => {
-      // This callback runs after the state is updated
       this.getBarcodes();
     });
   };
 
-  // Handle edit form changes
-  handleEditFormChange = (field, value) => {
-    this.setState(prevState => ({
-      editFormData: {
-        ...prevState.editFormData,
-        [field]: value
-      }
-    }));
+  handlePageSizeChange = (current, size) => {
+    this.setState({ 
+      page: 1,
+      rows: size 
+    }, () => {
+      this.getBarcodes();
+    });
   };
 
-  // Update barcode - FIXED VERSION
-  updateBarcodeData = async () => {
-    const { editingBarcode, editFormData } = this.state;
+  // Handle search functionality
+  handleSearch = () => {
+    this.setState({ page: 1 }, () => {
+      this.getBarcodes();
+    });
+  };
+
+  // Handle search input with debounce
+  handleSearchChange = (value) => {
+    this.setState({ search: value });
     
-    if (!editFormData.barcode.trim() || !editFormData.product_name.trim()) {
-      this.showToast("Please fill in all fields", "error");
-      return;
+    // Optional: Add debounce for real-time search
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
     }
-
-    this.setState({ updating: true });
-    try {
-      const updateData = {
-        barcode: editFormData.barcode.trim(),
-        id: editingBarcode.id || editingBarcode.barcode,
-        product_name: editFormData.product_name.trim(),
-      };
-      
-      await editBarcode(updateData);
-      this.showToast("Barcode updated successfully");
-      
-      // Close modal and refresh data using the new method
-      this.handleEditSuccess();
-      
-    } catch (error) {
-      this.showToast("Error updating barcode", "error");
-      this.setState({ updating: false });
-    }
-  };
-
-  toggleScannerMode = () => {
-    this.setState(prevState => ({
-      scannerMode: !prevState.scannerMode,
-      scannerInput: ""
-    }));
+    
+    this.searchTimeout = setTimeout(() => {
+      this.setState({ page: 1 }, () => {
+        this.getBarcodes();
+      });
+    }, 500); // 500ms delay
   };
 
   render() {
@@ -528,12 +399,14 @@ export class Barcode extends Component {
       loading,
       selectedBarcodes,
       selectAll,
+      showGenerateModal,
+      numberOfBarcodes,
+      showPrintModal,
       showEditModal,
-      editFormData,
-      scannerMode,
-      scannerInput,
-      updating,
-      printing
+      editingBarcode,
+      editBarcodeValue,
+      page,
+      rows
     } = this.state;
 
     return (
@@ -553,56 +426,30 @@ export class Barcode extends Component {
                   <Breadcrumb.Item href="#products">📊 Barcodes</Breadcrumb.Item>
                 </Breadcrumb>
               </div>
-              <div className="btn-toolbar mb-2 mb-md-0">
-                <ButtonGroup className="me-2">
-                  <Button 
-                    variant="outline-primary" 
-                    size="sm"
-                    onClick={() => this.props.history.push('/products')}
-                  >
-                    📦 Products
-                  </Button>
-                  <Button
-                    variant={scannerMode ? "primary" : "outline-secondary"}
-                    size="sm"
-                    onClick={this.toggleScannerMode}
-                  >
-                    📱 Scanner {scannerMode ? "ON" : "OFF"}
-                  </Button>
-                </ButtonGroup>
-                {selectedBarcodes.size > 0 && (
-                  <ButtonGroup>
-                    <Button
-                      variant="success"
-                      size="sm"
-                      onClick={this.printSelectedBarcodes}
-                      disabled={printing}
-                    >
-                      🖨️ Print Selected ({selectedBarcodes.size})
-                    </Button>
-                  </ButtonGroup>
-                )}
-              </div>
             </div>
           </Col>
         </Row>
 
-        {scannerMode && (
-          <Row className="mb-3">
-            <Col lg="12">
-              <Alert variant="info" className="d-flex align-items-center">
-                ℹ️ Scanner mode is active. Scan a barcode or type manually: 
-                <strong className="ms-2">{scannerInput}</strong>
-              </Alert>
-            </Col>
-          </Row>
-        )}
-
+        {/* Action Buttons Row */}
         <Row className="mb-4">
           <Col lg="6">
-            <h5 className="mb-0">
-              📊 Barcodes ({total})
-            </h5>
+            <ButtonGroup>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => this.setState({ showGenerateModal: true })}
+              >
+                + Generate Barcodes
+              </Button>
+              <Button
+                variant="success"
+                size="sm"
+                onClick={this.handlePrintSelected}
+                disabled={selectedBarcodes.length === 0}
+              >
+                🖨️ Print Selected ({selectedBarcodes.length})
+              </Button>
+            </ButtonGroup>
           </Col>
           <Col lg="6">
             <div className="d-flex justify-content-end">
@@ -612,17 +459,17 @@ export class Barcode extends Component {
                 className="me-2"
                 style={{ maxWidth: "300px" }}
                 value={search}
-                onChange={(e) => this.onChange(e.target.value, "search")}
+                onChange={(e) => this.handleSearchChange(e.target.value)}
                 onKeyUp={(e) => {
                   if (e.key === "Enter") {
-                    this.getBarcodes();
+                    this.handleSearch();
                   }
                 }}
               />
               <Button
                 variant="outline-secondary"
                 size="sm"
-                onClick={this.getBarcodes}
+                onClick={this.handleSearch}
                 disabled={loading}
               >
                 🔍
@@ -630,101 +477,221 @@ export class Barcode extends Component {
             </div>
           </Col>
         </Row>
-        
+
         <Card border="light" className="shadow-sm">
           <Card.Header className="border-bottom d-flex justify-content-between align-items-center">
-            <div className="d-flex align-items-center">
-              <Form.Check
-                type="checkbox"
-                id="select-all"
-                label="Select All"
-                checked={selectAll}
-                onChange={this.handleSelectAll}
-                className="me-3"
-              />
-              <span className="text-muted">
-                {selectedBarcodes.size} of {barcodes.length} selected
-              </span>
-            </div>
-            <div>
-              <small className="text-muted">
-                Total Records: {total}
-              </small>
-            </div>
+            <h6 className="m-0">Barcode Management</h6>
+            <Badge variant="secondary">{total} Total</Badge>
           </Card.Header>
           <Card.Body className="p-0">
             <Table responsive className="table-centered table-nowrap mb-0">
               <thead className="thead-light">
                 <tr>
-                  <th className="border-0" style={{ width: "50px" }}>Select</th>
-                  <th className="border-0">Barcode</th>
-                  <th className="border-0">Product Name</th>
-                  <th className="border-0" style={{ width: "200px" }}>Actions</th>
+                  <th>
+                    <Form.Check
+                      type="checkbox"
+                      checked={selectAll}
+                      onChange={this.handleSelectAll}
+                    />
+                  </th>
+                  <th>ID</th>
+                  <th>Barcode</th>
+                  <th>Used Count</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {barcodes.map((barcode, key) => {
-                  const barcodeId = barcode.id || barcode.barcode;
-                  const isSelected = selectedBarcodes.has(barcodeId);
-                  
-                  return (
-                    <tr key={key} className={isSelected ? "table-active" : ""}>
+                {barcodes.length > 0 ? (
+                  barcodes.map((barcode) => (
+                    <tr key={barcode.id}>
                       <td>
                         <Form.Check
                           type="checkbox"
-                          checked={isSelected}
-                          onChange={() => this.handleBarcodeSelect(barcodeId)}
+                          checked={selectedBarcodes.includes(barcode.id)}
+                          onChange={() => this.handleSelectBarcode(barcode.id)}
                         />
                       </td>
+                      <td>{barcode.id}</td>
                       <td>
-                        <code className="text-primary fw-bold">
-                          {barcode.barcode}
-                        </code>
+                        <code>{barcode.name}</code>
                       </td>
-                      <td>{barcode.product_name}</td>
+                      <td>{barcode.order_items_count}</td>
                       <td>
                         <ButtonGroup size="sm">
                           <Button
                             variant="outline-primary"
-                            onClick={() => this.openEditModal(barcode)}
-                            title="Edit Barcode"
+                            size="sm"
+                            onClick={() => this.handleEditBarcode(barcode)}
+                            title="Edit barcode"
                           >
                             ✏️
                           </Button>
                           <Button
-                            variant="outline-success"
-                            onClick={() => this.printSingleBarcode(barcode)}
-                            disabled={printing}
-                            title="Print Barcode"
+                            variant="outline-info"
+                            size="sm"
+                            onClick={() => this.handlePrintSingle(barcode)}
+                            title="Print single barcode"
                           >
                             🖨️
                           </Button>
                         </ButtonGroup>
                       </td>
                     </tr>
-                  );
-                })}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="text-center py-4">
+                      <div className="text-muted">
+                        {search ? `No barcodes found matching "${search}"` : "No barcodes available"}
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </Table>
             
-            {barcodes.length === 0 && !loading && (
-              <div className="text-center py-5">
-                <div style={{ fontSize: '48px', marginBottom: '20px' }}>📊</div>
-                <h5 className="text-muted">No barcodes found</h5>
-                <p className="text-muted">Try adjusting your search criteria</p>
-              </div>
-            )}
+            {/* Ant Design Pagination */}
+            <div className="d-flex justify-content-center p-3">
+              <Pagination
+                current={page}
+                total={total}
+                pageSize={rows}
+                showSizeChanger={true}
+                pageSizeOptions={['10', '20', '50', '100']}
+                showQuickJumper={true}
+                showTotal={(total, range) => 
+                  `${range[0]}-${range[1]} of ${total} items`
+                }
+                onChange={this.handlePageChange}
+                onShowSizeChange={this.handlePageSizeChange}
+              />
+            </div>
           </Card.Body>
         </Card>
 
-        {/* Edit Modal - UPDATED with onSuccess callback */}
-        {showEditModal && (
-          <EditBarcode 
-            stock={editFormData} 
-            toggle={() => this.closeEditModal()} 
-            onSuccess={() => this.handleEditSuccess()}
-          />
-        )}
+        {/* Generate Barcodes Modal */}
+        <Modal isOpen={showGenerateModal} toggle={() => this.setState({ showGenerateModal: false })}>
+          <ModalHeader toggle={() => this.setState({ showGenerateModal: false })}>
+            Generate New Barcodes
+          </ModalHeader>
+          <ModalBody>
+            <FormGroup>
+              <FormLabel>Number of Barcodes to Generate</FormLabel>
+              <FormControl
+                type="number"
+                min="1"
+                max="100"
+                value={numberOfBarcodes}
+                onChange={(e) => this.onChange(parseInt(e.target.value) || 1, "numberOfBarcodes")}
+              />
+            </FormGroup>
+          </ModalBody>
+          <ModalFooter>
+            <Button 
+              variant="secondary" 
+              onClick={() => this.setState({ showGenerateModal: false })}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={this.handleGenerateBarcodes}
+              disabled={loading}
+            >
+              Generate {numberOfBarcodes} Barcode{numberOfBarcodes !== 1 ? 's' : ''}
+            </Button>
+          </ModalFooter>
+        </Modal>
+
+        {/* Edit Barcode Modal */}
+        <Modal isOpen={showEditModal} toggle={() => this.setState({ showEditModal: false })}>
+          <ModalHeader toggle={() => this.setState({ showEditModal: false })}>
+            Edit Barcode
+          </ModalHeader>
+          <ModalBody>
+            {editingBarcode && (
+              <>
+                <FormGroup>
+                  <FormLabel>Barcode ID</FormLabel>
+                  <FormControl
+                    type="text"
+                    value={editingBarcode.id}
+                    disabled
+                    style={{ backgroundColor: '#f8f9fa' }}
+                  />
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Barcode Value</FormLabel>
+                  <FormControl
+                    type="text"
+                    value={editBarcodeValue}
+                    onChange={(e) => this.setState({ editBarcodeValue: e.target.value })}
+                    placeholder="Enter barcode value"
+                  />
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Used Count</FormLabel>
+                  <FormControl
+                    type="text"
+                    value={editingBarcode.order_items_count || 0}
+                    disabled
+                    style={{ backgroundColor: '#f8f9fa' }}
+                  />
+                </FormGroup>
+              </>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button 
+              variant="secondary" 
+              onClick={() => this.setState({ showEditModal: false })}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={this.handleSaveEditedBarcode}
+              disabled={loading || !editBarcodeValue.trim()}
+            >
+              Save Changes
+            </Button>
+          </ModalFooter>
+        </Modal>
+
+        {/* Print Modal */}
+        <Modal isOpen={showPrintModal} toggle={() => this.setState({ showPrintModal: false })}>
+          <ModalHeader toggle={() => this.setState({ showPrintModal: false })}>
+            Print Barcodes
+          </ModalHeader>
+          <ModalBody>
+            <p>Ready to print {selectedBarcodes.length} selected barcode(s).</p>
+            <div className="barcode-preview" style={{ maxHeight: "300px", overflowY: "auto" }}>
+              {barcodes
+                .filter(b => selectedBarcodes.includes(b.id))
+                .map(barcode => (
+                  <div key={barcode.id} className="p-2 border mb-2">
+                    <strong>ID: {barcode.id}</strong><br />
+                    <code style={{ fontSize: "14px" }}>{barcode.name}</code><br />
+                    <small>Used Count: {barcode.order_items_count || 0}</small>
+                  </div>
+                ))}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button 
+              variant="secondary" 
+              onClick={() => this.setState({ showPrintModal: false })}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="primary"
+              onClick={this.handlePrintNow}
+            >
+              🖨️ Print Now
+            </Button>
+          </ModalFooter>
+        </Modal>
       </>
     );
   }

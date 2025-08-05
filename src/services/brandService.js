@@ -18,7 +18,25 @@ export function getbarcodes(data) {
         headers: authHeader(),
         body: JSON.stringify(data)
     };
-    return fetch(`${settings.API_URL}barcodes`, requestOptions).then(authService.handleResponse);
+    return fetch(`${settings.API_URL}barcodes/xxx`, requestOptions).then(authService.handleResponse);
+}
+
+export function addBarcodes(data) {
+    const requestOptions = {
+        method: 'POST',
+        headers: authHeader(),
+        body: JSON.stringify(data)
+    };
+    return fetch(`${settings.API_URL}barcodes/generate`, requestOptions).then(authService.handleResponse);
+}
+
+export function updateBarcode(data) {
+    const requestOptions = {
+        method: 'POST',
+        headers: authHeader(),
+        body: JSON.stringify(data)
+    };
+    return fetch(`${settings.API_URL}barcodes/update`, requestOptions).then(authService.handleResponse);
 }
 
 export function addBrands(data) {

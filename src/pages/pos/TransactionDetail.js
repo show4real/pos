@@ -357,6 +357,8 @@ export class TransactionDetail extends Component {
     const transaction_total = transaction_detail
       .map((p) => p.selling_price * p.qty_sold)
       .reduce((prev, curr) => prev + curr, 0);
+      const discount = invoice_data?.discount;
+      console.log(discount)
 
     return (
       <>
@@ -369,12 +371,13 @@ export class TransactionDetail extends Component {
           transaction_date_time={transaction_date_time[0]}
           payment_mode={p_mode[0]}
           cashier_name={cashier_name[0]}
-          transaction_total={transaction_total}
+          transaction_total={transaction_total + delivery_fee - discount}
           balance={this.state.balance}
           prev_balance={this.state.prev_balance}
           total_balance={this.state.total_balance}
           formatNumber={this.formatNumber}
           delivery_fee ={delivery_fee}
+          discount = {discount}
         />
 
         <ThermalPrintComponent
@@ -385,12 +388,13 @@ export class TransactionDetail extends Component {
           transaction_date_time={transaction_date_time[0]}
           payment_mode={p_mode[0]}
           cashier_name={cashier_name[0]}
-          transaction_total={transaction_total}
+          transaction_total={transaction_total + delivery_fee - discount}
           balance={this.state.balance}
           prev_balance={this.state.prev_balance}
           total_balance={this.state.total_balance}
           formatNumber={this.formatNumber}
           delivery_fee ={delivery_fee}
+          discount={discount}
         />
 
         {loading && <SpinDiv text={"Loading..."} />}
