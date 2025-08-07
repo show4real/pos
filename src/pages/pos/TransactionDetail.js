@@ -405,7 +405,7 @@ export class TransactionDetail extends Component {
           toggle={() => !loading && toggle}
           style={{
             maxWidth: "70%",
-            marginLeft: "280px", // Replace 280px with your actual sidebar width
+            marginLeft: "350px", // Replace 280px with your actual sidebar width
             marginRight: "auto"
           }}
           centered
@@ -515,7 +515,50 @@ export class TransactionDetail extends Component {
 
             {/* Balance Cards Row */}
             <div className="row g-3 mb-4">
-               {/* Amount Paid Card */}
+               
+
+              <div className="col-lg-3 col-md-6">
+                <div className="info-card h-100 border-success">
+                  <div className="card-body text-center">
+                    <div className="info-icon mb-2">
+                      <i className="fas fa-car text-success fs-4"></i>
+                    </div>
+                    <p className="text-muted mb-1 small">Delivery Fee</p>
+                    <h6 className="mb-0 fw-bold text-success">
+                      {company?.currency || ''} {this.formatNumber(invoice_data?.delivery_fee || 0)}
+                    </h6>
+                  </div>
+                </div>
+              </div>
+              <div className="col-lg-3 col-md-6">
+                <div className="info-card h-100 border-success">
+                  <div className="card-body text-center">
+                    <div className="info-icon mb-2">
+                      <i className="fas fa-money-bill-wave text-success fs-4"></i>
+                    </div>
+                    <p className="text-muted mb-1 small">Discount</p>
+                    <h6 className="mb-0 fw-bold text-success">
+                      {company?.currency || ''} {this.formatNumber(-invoice_data?.discount || 0)}
+                    </h6>
+                  </div>
+                </div>
+              </div>
+              {/* Amount Paid Card */}
+              <div className="col-lg-3 col-md-6">
+                <div className="info-card h-100 border-success">
+                  <div className="card-body text-center">
+                    <div className="info-icon mb-2">
+                      <i className="fas fa-money-bill-wave text-success fs-4"></i>
+                    </div>
+                    <p className="text-muted mb-1 small">Amount</p>
+                    <h6 className="mb-0 fw-bold text-success">
+                      {company?.currency || ''} {this.formatNumber(invoice_data?.amount || 0)}
+                    </h6>
+                  </div>
+                </div>
+              </div>
+
+              {/* Amount Paid Card */}
               <div className="col-lg-3 col-md-6">
                 <div className="info-card h-100 border-success">
                   <div className="card-body text-center">
@@ -525,20 +568,6 @@ export class TransactionDetail extends Component {
                     <p className="text-muted mb-1 small">Amount Paid</p>
                     <h6 className="mb-0 fw-bold text-success">
                       {company?.currency || ''} {this.formatNumber(invoice_data?.amount_paid || 0)}
-                    </h6>
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-lg-3 col-md-6">
-                <div className="info-card h-100 border-success">
-                  <div className="card-body text-center">
-                    <div className="info-icon mb-2">
-                      <i className="fas fa-money-bill-wave text-success fs-4"></i>
-                    </div>
-                    <p className="text-muted mb-1 small">Delivery Fee</p>
-                    <h6 className="mb-0 fw-bold text-success">
-                      {company?.currency || ''} {this.formatNumber(invoice_data?.delivery_fee || 0)}
                     </h6>
                   </div>
                 </div>

@@ -379,6 +379,9 @@ export class PosTransaction extends Component {
                         <i className="fas fa-tags me-2 text-muted"></i>Channel
                       </th>
                       <th className="border-0 fw-semibold text-dark py-3">
+                        <i className="fas fa-money me-2 text-muted"></i>Amount
+                      </th>
+                      <th className="border-0 fw-semibold text-dark py-3">
                         <i className="fas fa-calendar me-2 text-muted"></i>Date
                       </th>
                       <th className="border-0 fw-semibold text-dark py-3 text-center">Actions</th>
@@ -406,6 +409,11 @@ export class PosTransaction extends Component {
                         </td>
                         <td className="py-3">
                           {this.getChannelBadge(transaction.channel)}
+                        </td>
+                        <td className="py-3">
+                          <code className="bg-light px-2 py-1 rounded text-dark">
+                            {this.formatCurrency(transaction.amount)}
+                          </code>
                         </td>
                         <td className="py-3">
                           <div className="text-dark">{moment(transaction.created_at).format('MMM DD, YYYY')}</div>
