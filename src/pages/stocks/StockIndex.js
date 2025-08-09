@@ -1,6 +1,6 @@
 import React, { Component } from "react";
-import { Input, Media } from "reactstrap";
-import { getStock, deleteStock, moveStock, createStock } from "../../services/stockService";
+import { Input } from "reactstrap";
+import { getStock, deleteStock, moveStock } from "../../services/stockService";
 import { getAllBranches, getProducts } from "../../services/branchService";
 import CreateStockModal from "./CreateStockModal";
 import DeleteStockModal from "./DeleteStockModal";
@@ -13,10 +13,9 @@ import {
   Card,
   Table,
   Button,
-  ButtonGroup,
   Breadcrumb,
   Form,
-  Modal,
+  Alert,
 } from "@themesberg/react-bootstrap";
 import SpinDiv from "../components/SpinDiv";
 import Select from 'react-select';
@@ -37,30 +36,31 @@ export class StockIndex extends Component {
       rows: 10,
       loading: false,
       stocks: [],
-      products: [],
-      total_cost: [],
-      order: "",
-      value: "",
       total: 0,
-      total_cart: 0,
       branch_id: props.match.params.id,
-      // Add stock summary metrics
+      
+      // Stock summary metrics
       totalStockQuantity: 0,
       totalQuantitySold: 0,
       totalInStock: 0,
-      // Add date filters
+      
+      // Filters
+      order: "",
       start_date: "",
       end_date: "",
-      // For searchable dropdown
+      expiry_date:"",
+      showFilter: false,
       selectedProduct: null,
       productOptions: [],
-      // For delete confirmation modal
+      
+      // Modals and editing
       showDeleteModal: false,
       stockToDelete: null,
       deleting: false,
       editBarcode: null,
       editPrice: null,
-      // For move stock modal
+      
+      // Move stock
       showMoveModal: false,
       stockToMove: null,
       moving: false,
@@ -69,33 +69,16 @@ export class StockIndex extends Component {
       moveQuantity: 0,
       maxMoveQuantity: 0,
       branchOptions: [],
-      // For branch info
+      
+      // Branch info
       currentBranch: null,
-      // For create stock modal
+      
+      // Create stock
       showCreateModal: false,
       showEditModal: false,
-      creating: false,
       allProducts: [],
-      allSuppliers: [],
-      createForm: {
-        product_id: null,
-        supplier_id: null,
-        stock_quantity: '',
-        unit_price: '',
-        unit_selling_price: '',
-        expiry_date: '',
-        batch_number: '',
-        barcode: '',
-        notes: ''
-      },
-      createProductOptions: [],
-      createSupplierOptions: [],
-      selectedCreateProduct: null,
-      selectedCreateSupplier: null,
-      // Add missing state
-      showFilter: false,
-      addToCart: false,
-      // Form data and errors for CreateStockModal
+      
+      // Form data for CreateStockModal
       formData: {
         product_id: null,
         supplier_id: null,
@@ -109,21 +92,16 @@ export class StockIndex extends Component {
       },
       formErrors: {},
       updateStock: null,
-      // Filter persistence state
-      previousFilters: {
-        order: "",
-        selectedProduct: null,
-        start_date: "",
-        end_date: "",
-        search: "",
-        page: 1
-      },
+      
+      // Stock actions and details
       showStockActions: {},
-      // New state for expandable stock details
-      expandedStockDetails: {}
+      expandedStockDetails: {},
+      
+      // Expiry notifications
+      expiryAlerts: [],
+      showExpiryAlert: true
     };
 
-    // Create refs
     this.barcodeInputRef = React.createRef();
   }
 
@@ -133,63 +111,89 @@ export class StockIndex extends Component {
     this.getAllProducts();
   }
 
-  // Helper method to save current filter state
-  saveCurrentFilters = () => {
-    const { order, selectedProduct, start_date, end_date, search, page } = this.state;
-    this.setState({
-      previousFilters: {
-        order,
-        selectedProduct,
-        start_date,
-        end_date,
-        search,
-        page
-      }
-    });
+  // Calculate expiry status and generate alerts
+  calculateExpiryStatus = (expiryDate) => {
+    if (!expiryDate) return { status: 'no-expiry', daysToExpiry: null, className: '', message: '' };
+    
+    const today = dayjs();
+    const expiry = dayjs(expiryDate);
+    const daysToExpiry = expiry.diff(today, 'day');
+    const monthsToExpiry = expiry.diff(today, 'month');
+    
+    if (daysToExpiry < 0) {
+      return {
+        status: 'expired',
+        daysToExpiry,
+        className: 'bg-danger text-white',
+        message: `Expired ${Math.abs(daysToExpiry)} days ago`
+      };
+    } else if (daysToExpiry <= 30) {
+      return {
+        status: 'expiring-soon',
+        daysToExpiry,
+        className: 'bg-warning text-dark',
+        message: daysToExpiry === 0 ? 'Expires today' : `Expires in ${daysToExpiry} day${daysToExpiry !== 1 ? 's' : ''}`
+      };
+    } else if (daysToExpiry >= 30) {
+      return {
+        status: 'expiring-month',
+        daysToExpiry,
+        className: 'bg-info text-white',
+        message: `Expires in ${monthsToExpiry} months`
+      };
+    } else {
+      return {
+        status: 'good',
+        daysToExpiry,
+        className: 'bg-success text-white',
+        message: `${daysToExpiry} days remaining`
+      };
+    }
   };
 
-  toggleStockActions = (stockId) => {
-    this.setState(prevState => ({
-      showStockActions: {
-        ...prevState.showStockActions,
-        [stockId]: !prevState.showStockActions?.[stockId]
+  // Generate expiry alerts for dashboard
+  generateExpiryAlerts = (stocks) => {
+    const alerts = [];
+    const expiredItems = [];
+    const expiringSoonItems = [];
+    
+    stocks.forEach(stock => {
+      if (stock?.expiry_date) {
+        const expiryStatus = this.calculateExpiryStatus(stock.expiry_date);
+        
+        if (expiryStatus.status === 'expired') {
+          expiredItems.push({
+            ...stock,
+            expiryStatus
+          });
+        } else if (expiryStatus.status === 'expiring-soon') {
+          expiringSoonItems.push({
+            ...stock,
+            expiryStatus
+          });
+        }
       }
-    }));
-  }
-
-  // New method to toggle stock details expansion
-  toggleStockDetails = (stockId) => {
-    this.setState(prevState => ({
-      expandedStockDetails: {
-        ...prevState.expandedStockDetails,
-        [stockId]: !prevState.expandedStockDetails?.[stockId]
-      }
-    }));
-  }
-
-  // Helper method to restore filter state
-  restoreFilters = () => {
-    const { previousFilters } = this.state;
-    this.setState({
-      order: previousFilters.order,
-      selectedProduct: previousFilters.selectedProduct,
-      start_date: previousFilters.start_date,
-      end_date: previousFilters.end_date,
-      search: previousFilters.search,
-      page: previousFilters.page
     });
-  };
 
-  // Enhanced method to reload data while preserving filters
-  reloadStocksWithFilters = (callback = null) => {
-    // Save current filters before reloading
-    this.saveCurrentFilters();
+    if (expiredItems.length > 0) {
+      alerts.push({
+        type: 'danger',
+        title: 'Expired Items',
+        message: `${expiredItems.length} item${expiredItems.length !== 1 ? 's have' : ' has'} expired`,
+        items: expiredItems
+      });
+    }
 
-    // Small delay to ensure state is saved
-    setTimeout(() => {
-      this.getStocks();
-      if (callback) callback();
-    }, 50);
+    if (expiringSoonItems.length > 0) {
+      alerts.push({
+        type: 'warning',
+        title: 'Items Expiring Soon',
+        message: `${expiringSoonItems.length} item${expiringSoonItems.length !== 1 ? 's expire' : ' expires'} within 7 days`,
+        items: expiringSoonItems
+      });
+    }
+
+    this.setState({ expiryAlerts: alerts });
   };
 
   showToast = (msg) => {
@@ -221,14 +225,14 @@ export class StockIndex extends Component {
     getProducts().then(
       (res) => {
         const products = res.products || [];
-        const createProductOptions = products.map(product => ({
+        const productOptions = products.map(product => ({
           value: product.id,
           label: product.name,
         }));
 
         this.setState({
           allProducts: products,
-          createProductOptions: createProductOptions,
+          productOptions: productOptions,
         });
       },
       (error) => {
@@ -238,8 +242,7 @@ export class StockIndex extends Component {
   };
 
   getStocks = () => {
-    const { page, rows, order, search, branch_id, start_date, end_date } = this.state;
-    console.log(order);
+    const { page, rows, order, search, branch_id, start_date, end_date, expiry_date } = this.state;
     this.setState({ loading: true });
 
     getStock({
@@ -249,42 +252,33 @@ export class StockIndex extends Component {
       branch_id,
       search,
       start_date,
-      end_date
+      end_date,
+      expiry_date
     }).then(
       (res) => {
-        console.log(res);
-
-        // Update product options for searchable dropdown
-        const productOptions = res.products.data.map(product => ({
-          value: product.id,
-          label: product.name,
-        }));
-
+        const stocks = res.stocks.data || [];
+        
         this.setState({
           loading: false,
-          stocks: res.stocks.data,
-          products: res.products.data,
-          productOptions: productOptions,
-          total_cost: 0,
+          stocks: stocks,
           total: res.stocks.total,
-          initialPurchaseOrders: { ...res.stocks.data },
-          // Use stock summary metrics from response root level
           totalStockQuantity: res.stock_quantity || 0,
           totalQuantitySold: res.quantity_sold || 0,
           totalInStock: res.instock || 0,
         });
+
+        // Generate expiry alerts after stocks are loaded
+        this.generateExpiryAlerts(stocks);
       },
       (error) => {
         this.setState({ loading: false });
+        this.showErrorToast("Failed to load stocks");
       }
     );
   };
 
-  // Create stock functionality
+  // Modal handlers
   handleCreateStock = () => {
-    // Save filters before opening modal
-    this.saveCurrentFilters();
-
     const initialFormData = {
       product_id: null,
       supplier_id: null,
@@ -299,50 +293,15 @@ export class StockIndex extends Component {
 
     this.setState({
       showCreateModal: true,
-      createForm: initialFormData,
       formData: initialFormData,
-      selectedCreateProduct: null,
-      selectedCreateSupplier: null,
       formErrors: {}
     });
   };
 
-  handleCreateFormChange = (field, value) => {
-    this.setState({
-      createForm: {
-        ...this.state.createForm,
-        [field]: value
-      },
-      formData: {
-        ...this.state.formData,
-        [field]: value
-      }
-    });
-  };
-
-  handleCreateProductSelect = (selectedOption) => {
-    this.setState({
-      selectedCreateProduct: selectedOption,
-      createForm: {
-        ...this.state.createForm,
-        product_id: selectedOption ? selectedOption.value : null
-      },
-      formData: {
-        ...this.state.formData,
-        product_id: selectedOption ? selectedOption.value : null
-      }
-    });
-  };
-
-  // Form handlers for CreateStockModal props
   handleFormChange = (field, value) => {
     this.setState({
       formData: {
         ...this.state.formData,
-        [field]: value
-      },
-      createForm: {
-        ...this.state.createForm,
         [field]: value
       }
     });
@@ -353,109 +312,22 @@ export class StockIndex extends Component {
       formData: {
         ...this.state.formData,
         [field]: value
-      },
-      createForm: {
-        ...this.state.createForm,
-        [field]: value
       }
     });
   };
 
-  // Handle products update after creating new product
-  handleProductsUpdate = async () => {
-    try {
-      const res = await getProducts();
-      const products = res.products || [];
-      const createProductOptions = products.map(product => ({
-        value: product.id,
-        label: product.name,
-      }));
-
-      this.setState({
-        allProducts: products,
-        createProductOptions: createProductOptions,
-        products: products, // Update the products used in the modal
-      });
-    } catch (error) {
-      console.error("Error updating products:", error);
-    }
-  };
-
-  validateCreateForm = () => {
-    const { createForm } = this.state;
-    const errors = {};
-
-    if (!createForm.product_id) errors.product_id = "Product is required";
-    if (!createForm.supplier_id) errors.supplier_id = "Supplier is required";
-    if (!createForm.stock_quantity || parseFloat(createForm.stock_quantity) <= 0) {
-      errors.stock_quantity = "Stock quantity must be greater than 0";
-    }
-    if (!createForm.unit_price || parseFloat(createForm.unit_price) <= 0) {
-      errors.unit_price = "Unit price must be greater than 0";
-    }
-    if (!createForm.unit_selling_price || parseFloat(createForm.unit_selling_price) <= 0) {
-      errors.unit_selling_price = "Unit selling price must be greater than 0";
-    }
-
-    this.setState({ formErrors: errors });
-    return Object.keys(errors).length === 0;
-  };
-
   confirmCreateStock = async () => {
-    this.setState({
-      showCreateModal: false,
-      selectedCreateProduct: null,
-      selectedCreateSupplier: null,
-      formErrors: {}
-    });
-
-    // Restore filters and reload data
-    this.restoreFilters();
-    this.reloadStocksWithFilters();
+    this.setState({ showCreateModal: false });
+    this.getStocks(); // Reload data
+    this.getAllProducts();
   };
 
   cancelCreateStock = () => {
-    const initialFormData = {
-      product_id: null,
-      supplier_id: null,
-      stock_quantity: '',
-      unit_price: '',
-      unit_selling_price: '',
-      expiry_date: '',
-      batch_number: '',
-      barcode: '',
-      notes: ''
-    };
-
-    this.setState({
-      showCreateModal: false,
-      createForm: initialFormData,
-      formData: initialFormData,
-      selectedCreateProduct: null,
-      selectedCreateSupplier: null,
-      formErrors: {}
-    });
-
-    // Restore filters
-    this.restoreFilters();
+    this.setState({ showCreateModal: false });
   };
 
-  cancelEditStock = () => {
-    this.setState({
-      showEditModal: false,
-      updateStock: null
-    });
-
-    // Restore filters and reload data
-    this.restoreFilters();
-    this.reloadStocksWithFilters();
-  };
-
-  // Delete stock functionality
+  // Delete stock
   handleDeleteStock = (stock) => {
-    // Save filters before opening modal
-    this.saveCurrentFilters();
-
     this.setState({
       showDeleteModal: true,
       stockToDelete: stock,
@@ -464,24 +336,17 @@ export class StockIndex extends Component {
 
   confirmDeleteStock = async () => {
     const { stockToDelete } = this.state;
-
     this.setState({ deleting: true });
 
     try {
-      const res = await deleteStock(stockToDelete.id);
-
+      await deleteStock(stockToDelete.id);
       this.setState({
         deleting: false,
         showDeleteModal: false,
         stockToDelete: null,
       });
-
       this.showToast("Stock deleted successfully!");
-
-      // Restore filters and reload data
-      this.restoreFilters();
-      this.reloadStocksWithFilters();
-
+      this.getStocks();
     } catch (error) {
       console.error("Error deleting stock:", error);
       this.showErrorToast("Stock cannot be deleted");
@@ -494,16 +359,10 @@ export class StockIndex extends Component {
       showDeleteModal: false,
       stockToDelete: null,
     });
-
-    // Restore filters
-    this.restoreFilters();
   };
 
-  // Move stock functionality
+  // Move stock
   handleMoveStock = (stock) => {
-    // Save filters before opening modal
-    this.saveCurrentFilters();
-
     const maxMoveQuantity = stock.in_stock;
     const branchOptions = this.state.branches
       .filter(branch => branch.id !== parseInt(this.state.branch_id))
@@ -543,20 +402,15 @@ export class StockIndex extends Component {
       return;
     }
 
-    if (moveQuantity <= 0) {
+    if (moveQuantity <= 0 || moveQuantity > stockToMove.in_stock) {
       this.showErrorToast("Please enter a valid quantity to move");
-      return;
-    }
-
-    if (moveQuantity > stockToMove.in_stock) {
-      this.showErrorToast("Cannot move more than available stock");
       return;
     }
 
     this.setState({ moving: true });
 
     try {
-      const res = await moveStock({
+      await moveStock({
         stock_id: stockToMove.id,
         from_branch_id: this.state.branch_id,
         to_branch_id: selectedToBranch.value,
@@ -574,11 +428,7 @@ export class StockIndex extends Component {
       });
 
       this.showToast(`Successfully moved ${moveQuantity} units to ${selectedToBranch.label}`);
-
-      // Restore filters and reload data
-      this.restoreFilters();
-      this.reloadStocksWithFilters();
-
+      this.getStocks();
     } catch (error) {
       console.error("Error moving stock:", error);
       this.showErrorToast("Failed to move stock. Please try again.");
@@ -593,59 +443,11 @@ export class StockIndex extends Component {
       selectedToBranch: null,
       moveQuantity: 0,
     });
-
-    // Restore filters
-    this.restoreFilters();
   };
 
-  sleep = (ms) =>
-    new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, ms);
-    });
-
-  loadOptions = async (search, prevOptions) => {
-    let options = [];
-    options = this.state.products.map((product, key) => {
-      return {
-        value: product.id,
-        label: product.name,
-      };
-    });
-    await this.sleep(1000);
-
-    let filteredOptions;
-    if (!search) {
-      filteredOptions = options;
-    } else {
-      const searchLower = search.toLowerCase();
-
-      filteredOptions = options.filter(({ label }) =>
-        label.toLowerCase().includes(searchLower)
-      );
-    }
-
-    const hasMore = filteredOptions.length > prevOptions.length + 10;
-    const slicedOptions = filteredOptions.slice(
-      prevOptions.length,
-      prevOptions.length + 10
-    );
-
-    return {
-      options: slicedOptions,
-      hasMore,
-    };
-  };
-
+  // Pagination and filtering
   onPage = async (page, rows) => {
     await this.setState({ page, rows });
-    await this.getStocks();
-  };
-
-  onFilter = async (e, filter) => {
-    console.log(filter);
-    await this.setState({ [filter]: e });
     await this.getStocks();
   };
 
@@ -653,7 +455,6 @@ export class StockIndex extends Component {
     this.setState({ [state]: e });
   };
 
-  // Handle product selection from searchable dropdown
   handleProductSelect = (selectedOption) => {
     this.setState({
       selectedProduct: selectedOption,
@@ -663,36 +464,28 @@ export class StockIndex extends Component {
     });
   };
 
-  // Handle date filter changes
   handleDateFilter = (field, value) => {
     this.setState({ [field]: value }, () => {
       this.getStocks();
     });
   };
 
+  // Edit handlers
   toggleCloseBarcode = () => {
     this.setState({ editBarcode: null });
-    // Restore filters and reload data
-    this.restoreFilters();
-    this.reloadStocksWithFilters();
+    this.getStocks();
   };
 
   toggleCloseEditPrice = () => {
     this.setState({ editPrice: null });
-    // Restore filters and reload data
-    this.restoreFilters();
-    this.reloadStocksWithFilters();
+    this.getStocks();
   };
 
   toggleUpdateBarcode = (editBarcode) => {
-    // Save filters before opening modal
-    this.saveCurrentFilters();
     this.setState({ editBarcode });
   };
 
   toggleUpdatePrice = (editPrice) => {
-    // Save filters before opening modal
-    this.saveCurrentFilters();
     this.setState({ editPrice });
   };
 
@@ -701,35 +494,42 @@ export class StockIndex extends Component {
       updateStock: null,
       showEditModal: false
     });
-    // Restore filters and reload data
-    this.restoreFilters();
-    this.reloadStocksWithFilters();
+    this.getStocks();
   };
 
   toggleUpdateStock = (updateStock) => {
-    // Save filters before opening modal
-    this.saveCurrentFilters();
     this.setState({
       showEditModal: true,
       updateStock
     });
   };
 
-  // Clear all filters
+  // UI toggles
+  toggleStockActions = (stockId) => {
+    this.setState(prevState => ({
+      showStockActions: {
+        ...prevState.showStockActions,
+        [stockId]: !prevState.showStockActions?.[stockId]
+      }
+    }));
+  }
+
+  toggleStockDetails = (stockId) => {
+    this.setState(prevState => ({
+      expandedStockDetails: {
+        ...prevState.expandedStockDetails,
+        [stockId]: !prevState.expandedStockDetails?.[stockId]
+      }
+    }));
+  }
+
   clearAllFilters = () => {
     this.setState({
       order: "",
       selectedProduct: null,
       start_date: "",
       end_date: "",
-      previousFilters: {
-        order: "",
-        selectedProduct: null,
-        start_date: "",
-        end_date: "",
-        search: "",
-        page: 1
-      }
+      expiry_date: ""
     }, () => {
       this.getStocks();
     });
@@ -739,13 +539,17 @@ export class StockIndex extends Component {
     if (x !== "null" && x !== "0") {
       const parts = x.toString().split(".");
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-      return `\u20a6${parts.join(".")}`;
+      return `₦${parts.join(".")}`;
     }
-    return "0";
+    return "₦0";
   }
 
   toggleFilter = () => {
     this.setState({ showFilter: !this.state.showFilter });
+  };
+
+  dismissExpiryAlert = () => {
+    this.setState({ showExpiryAlert: false });
   };
 
   render() {
@@ -758,12 +562,12 @@ export class StockIndex extends Component {
       rows,
       search,
       loading,
-      addToCart,
       totalStockQuantity,
       totalQuantitySold,
       totalInStock,
       start_date,
       end_date,
+      expiry_date,
       selectedProduct,
       productOptions,
       showDeleteModal,
@@ -772,7 +576,6 @@ export class StockIndex extends Component {
       editBarcode,
       editPrice,
       updateStock,
-      // Move stock state
       showMoveModal,
       stockToMove,
       moving,
@@ -780,26 +583,17 @@ export class StockIndex extends Component {
       branchOptions,
       moveQuantity,
       maxMoveQuantity,
-      // Branch info
       currentBranch,
-      // Create stock state
       showCreateModal,
       showEditModal,
-      creating,
-      createForm,
-      createProductOptions,
-      createSupplierOptions,
-      selectedCreateProduct,
-      selectedCreateSupplier,
-      products,
       formData,
       formErrors,
       allProducts,
-      expandedStockDetails
-
+      expandedStockDetails,
+      expiryAlerts,
+      showExpiryAlert
     } = this.state;
 
-    // Custom styles for react-select
     const selectStyles = {
       control: (provided) => ({
         ...provided,
@@ -844,7 +638,6 @@ export class StockIndex extends Component {
                 )}
               </div>
 
-              {/* Create Stock Button */}
               <div className="btn-toolbar mb-2 mb-md-0">
                 <Button
                   variant="primary"
@@ -858,6 +651,38 @@ export class StockIndex extends Component {
             </div>
           </Col>
         </Row>
+
+        {/* Expiry Alerts */}
+        {expiryAlerts.length > 0 && showExpiryAlert && (
+          <Row className="mb-4">
+            <Col lg="12">
+              {expiryAlerts.map((alert, index) => (
+                <Alert 
+                  key={index} 
+                  variant={alert.type} 
+                  dismissible 
+                  onClose={this.dismissExpiryAlert}
+                  className="d-flex align-items-center justify-content-between"
+                >
+                  <div className="d-flex align-items-center">
+                    <i className={`fa ${alert.type === 'danger' ? 'fa-exclamation-triangle' : 'fa-clock'} me-2`} />
+                    <div>
+                      <strong>{alert.title}:</strong> {alert.message}
+                      <div className="small mt-1">
+                        {alert.items.slice(0, 3).map((item, i) => (
+                          <span key={i} className="me-3">
+                            {item.product_name} ({item.expiryStatus.message})
+                          </span>
+                        ))}
+                        {alert.items.length > 3 && <span>... and {alert.items.length - 3} more</span>}
+                      </div>
+                    </div>
+                  </div>
+                </Alert>
+              ))}
+            </Col>
+          </Row>
+        )}
 
         {/* Stock Summary Cards - Show only when filtering by product */}
         {order && (
@@ -1005,6 +830,15 @@ export class StockIndex extends Component {
                       />
                     </Col>
                     <Col md={2}>
+                      <Form.Label className="form-label fw-semibold mb-2">Expiry Date</Form.Label>
+                      <Form.Control
+                        type="date"
+                        value={expiry_date}
+                        onChange={(e) => this.handleDateFilter('expiry_date', e.target.value)}
+                        className="form-control"
+                      />
+                    </Col>
+                    <Col md={2}>
                       <Button
                         variant="outline-warning"
                         size="sm"
@@ -1015,7 +849,7 @@ export class StockIndex extends Component {
                         Hide Filters
                       </Button>
                     </Col>
-                    {(order || start_date || end_date) && (
+                    {(order || start_date || end_date || expiry_date) && (
                       <Col md={3}>
                         <Button
                           variant="outline-secondary"
@@ -1098,6 +932,9 @@ export class StockIndex extends Component {
                     <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
                       Stock Details
                     </th>
+                    {/* <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
+                      Expiry Status
+                    </th> */}
                     <th className="border-0 py-3 px-4 fw-semibold text-muted text-uppercase tracking-wider">
                       Supplier
                     </th>
@@ -1119,8 +956,9 @@ export class StockIndex extends Component {
                       : 0;
                      const stockId = stock.id || stock.order?.id || key;
                      const isExpanded = expandedStockDetails[stockId];
-                    return (
+                     const expiryStatus = this.calculateExpiryStatus(stock?.expiry_date);
                     
+                    return (
                     <tr key={key} className="border-bottom">
                       <td className="py-4 px-4">
                         <div className="d-flex align-items-center">
@@ -1143,6 +981,30 @@ export class StockIndex extends Component {
                           </div>
                           <div>
                             <div className="fw-bold text-dark mb-1">{stock.product_name}</div>
+                             <div className="text-center">
+                          {stock?.expiry_date ? (
+                            <div>
+                              <div className={`badge ${expiryStatus.className} mb-2 px-3 py-2`}>
+                                <div className="d-flex align-items-center gap-2">
+                                  <i className={`fa ${
+                                    expiryStatus.status === 'expired' ? 'fa-exclamation-triangle' :
+                                    expiryStatus.status === 'expiring-soon' ? 'fa-clock' :
+                                    expiryStatus.status === 'expiring-month' ? 'fa-calendar' : 'fa-check-circle'
+                                  }`} />
+                                  <span className="small fw-bold">{expiryStatus.message}</span>
+                                </div>
+                              </div>
+                              <div className="small text-muted">
+                                Expires: {dayjs(stock.expiry_date).format('MMM D, YYYY')}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-muted small">
+                              <i className="fa fa-infinity" />
+                              <div>No Expiry Date</div>
+                            </div>
+                          )}
+                        </div>
                             {order && (
                               <span className="badge bg-primary-soft text-primary small">
                                 <i className="fa fa-filter me-1" />
@@ -1232,8 +1094,6 @@ export class StockIndex extends Component {
                               <div className="mb-3">
                                 <StockMovementHistory stock={stock} />
                               </div>
-
-                             
                             </div>
                           )}
 
@@ -1251,6 +1111,10 @@ export class StockIndex extends Component {
                           </div>
                         </div>
                       </td>
+
+                      {/* <td className="py-4 px-4">
+                       
+                      </td> */}
 
                       <td className="py-4 px-4">
                         <div className="text-dark fw-semibold mb-1">{stock.order.supplier_name}</div>
@@ -1326,9 +1190,10 @@ export class StockIndex extends Component {
                                   size="sm"
                                   onClick={() => this.toggleUpdatePrice(stock)}
                                   className="d-flex align-items-center gap-2 justify-content-center"
+                                  title = "Edit Price, Quantity and Expiry Date"
                                 >
                                   <i className="fa fa-edit" />
-                                  Edit Price & Qty
+                                  Special Edit
                                 </Button>
 
                                 {/* Move Stock Button - Show only when there's stock to move */}
@@ -1345,7 +1210,7 @@ export class StockIndex extends Component {
                                   </Button>
                                 )}
 
-                                {(!stock.movements_from?.length && !stock.movements_to?.length) && (
+                                {(stock.quantity_sold === 0 && !stock.movements_from?.length && !stock.movements_to?.length) && (
                                   <Button
                                     variant="outline-warning"
                                     size="sm"
@@ -1438,7 +1303,7 @@ export class StockIndex extends Component {
           show={showCreateModal}
           onCancel={this.cancelCreateStock}
           onConfirm={this.confirmCreateStock}
-          creating={creating}
+          onProductsUpdate={this.getAllProducts}
           products={allProducts}
           currentBranch={currentBranch}
           formData={formData}
@@ -1446,7 +1311,6 @@ export class StockIndex extends Component {
           handleFormChange={this.handleFormChange}
           handleSelectChange={this.handleSelectChange}
           barcodeInputRef={this.barcodeInputRef}
-          onProductsUpdate={this.handleProductsUpdate}
         />
 
         <EditStock
@@ -1455,7 +1319,6 @@ export class StockIndex extends Component {
           stock={updateStock}
           products={allProducts}
           onClose={this.cancelEditStock}
-          onProductsUpdate={this.handleProductsUpdate}
         />
 
         <MoveStockModal
@@ -1505,10 +1368,6 @@ export class StockIndex extends Component {
             background-color: rgba(13, 110, 253, 0.1);
           }
           
-          .bg-success-soft {
-            background-color: rgba(25, 135, 84, 0.1);
-          }
-          
           .table-hover tbody tr:hover {
             background-color: rgba(0, 0, 0, 0.02);
           }
@@ -1538,6 +1397,54 @@ export class StockIndex extends Component {
           .react-select-container .react-select__control--is-focused {
             border-color: #3b82f6;
             box-shadow: 0 0 0 1px #3b82f6;
+          }
+
+          /* Expiry status badges */
+          .badge.bg-danger {
+            background-color: #dc3545 !important;
+          }
+          
+          .badge.bg-warning {
+            background-color: #fd7e14 !important;
+          }
+          
+          .badge.bg-info {
+            background-color: #0dcaf0 !important;
+          }
+          
+          .badge.bg-success {
+            background-color: #198754 !important;
+          }
+
+          /* Alert animations */
+          .alert {
+            animation: fadeIn 0.5s ease-in-out;
+          }
+          
+          @keyframes fadeIn {
+            from {
+              opacity: 0;
+              transform: translateY(-10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          /* Responsive improvements */
+          @media (max-width: 768px) {
+            .stock-details {
+              min-width: 200px;
+            }
+            
+            .table-responsive {
+              font-size: 0.875rem;
+            }
+            
+            .badge {
+              font-size: 0.75rem;
+            }
           }
         `}</style>
       </>

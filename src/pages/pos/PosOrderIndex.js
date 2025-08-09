@@ -514,10 +514,10 @@ export class PosOrderIndex extends Component {
           loading: false,
           stocks: res.stocks.data,
           attributes: res.attributes,
-          products: res.products.data,
+         // products: res.products.data,
           total_cost: 0,
-          suppliers: res.suppliers.data,
-          branches: res.branches.data,
+          //suppliers: res.suppliers.data,
+          //branches: res.branches.data,
           total: res.stocks.total,
         });
       },
@@ -1175,12 +1175,12 @@ export class PosOrderIndex extends Component {
                       <div className="d-flex align-items-center">
                         <div className="icon-wrapper bg-success text-white rounded-circle me-2"
                           style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <i className="fas fa-check-circle fa-sm"></i>
+                         <a href="/"> <i className="fas fa-check-circle fa-sm"></i></a>
                         </div>
                         <div>
                           <div className="d-block" style={{ fontSize: 20 }}>Available  <h4 className="mb-1 text-primary fw-bold">
-                         <a  href="/"> <i className="fas fa-cube me-2"></i></a>
-                          Stock Inventory
+                         <a  href="/"> <i className="fas fa-cube me-2"></i> Stock Inventory</a>
+                         
                         </h4></div>
                           <span className="fw-bold text-success">{total} Items</span>
                         </div>
@@ -1332,6 +1332,13 @@ export class PosOrderIndex extends Component {
                                         <span className="badge bg-info">
                                           <i className="fas fa-warehouse me-1"></i>
                                           Total: {stock.stock_quantity}
+                                        </span>
+                                       
+                                      </div>
+                                      <div className="product-meta" style={{ fontSize: 20 }}>
+                                         <span className="badge bg-success">
+                                          <i className="fas fa-compass me-1"></i>
+                                        {stock.branch_name}
                                         </span>
                                       </div>
                                     </div>

@@ -76,7 +76,8 @@ const CreateStockModal = ({
         barcode: formData.barcode || null,
         stock_quantity: parseInt(formData.stock_quantity),
         unit_price: parseFloat(formData.unit_price),
-        unit_selling_price: parseFloat(formData.unit_selling_price)
+        unit_selling_price: parseFloat(formData.unit_selling_price),
+        expiry_date: formData.expiry_date || null
       };
 
       // Call the createStock service
@@ -236,6 +237,27 @@ const CreateStockModal = ({
                   <Form.Control.Feedback type="invalid">
                     {formErrors.unit_selling_price}
                   </Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row className="g-3 mt-2">
+              <Col md="12">
+                <Form.Group>
+                  <Form.Label className="fw-bold">Expiry Date</Form.Label>
+                  <Form.Control
+                    type="date"
+                    name="expiry_date"
+                    value={formData.expiry_date || ''}
+                    onChange={handleInputChange}
+                    isInvalid={!!formErrors.expiry_date}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {formErrors.expiry_date}
+                  </Form.Control.Feedback>
+                  <Form.Text className="text-muted">
+                    Leave empty if product doesn't expire
+                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>

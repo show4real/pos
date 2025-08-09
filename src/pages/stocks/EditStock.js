@@ -22,7 +22,13 @@ const EditStock = ({
 
   useEffect(() => {
     if (initialStock) {
-      setStockData(initialStock);
+      setStockData({
+        ...initialStock,
+        // Format expiry_date for date input (YYYY-MM-DD)
+        expiry_date: initialStock.expiry_date 
+          ? new Date(initialStock.expiry_date).toISOString().split('T')[0] 
+          : ""
+      });
       setFormErrors({});
     }
   }, [initialStock]);
@@ -86,6 +92,17 @@ const EditStock = ({
       errors.unit_price = "Unit price must be greater than 0";
     if (!stockData.unit_selling_price || parseFloat(stockData.unit_selling_price) <= 0)
       errors.unit_selling_price = "Selling price must be greater than 0";
+    
+    // Validate expiry date if provided
+    if (stockData.expiry_date) {
+      const expiryDate = new Date(stockData.expiry_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to compare only dates
+      
+      if (expiryDate < today) {
+        errors.expiry_date = "Expiry date cannot be in the past";
+      }
+    }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -104,6 +121,7 @@ const EditStock = ({
         stock_quantity: parseInt(stockData.stock_quantity),
         unit_price: parseFloat(stockData.unit_price),
         unit_selling_price: parseFloat(stockData.unit_selling_price),
+        expiry_date: stockData.expiry_date || null,
       };
 
       await editStock(stockPayload);
@@ -120,6 +138,11 @@ const EditStock = ({
   const handleCancel = () => {
     setFormErrors({});
     onClose();
+  };
+
+  // Helper function to get today's date in YYYY-MM-DD format for min attribute
+  const getTodayDate = () => {
+    return new Date().toISOString().split('T')[0];
   };
 
   return (
@@ -257,6 +280,31 @@ const EditStock = ({
               </Col>
             </Row>
 
+            <Row className="g-3 mt-2">
+              <Col md="6">
+                <Form.Group>
+                  <Form.Label className="fw-bold">
+                    <i className="fa fa-calendar me-1" />
+                    Expiry Date
+                  </Form.Label>
+                  <Form.Control
+                    type="date"
+                    name="expiry_date"
+                    value={stockData.expiry_date || ""}
+                    onChange={handleInputChange}
+                    min={getTodayDate()}
+                    isInvalid={!!formErrors.expiry_date}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {formErrors.expiry_date}
+                  </Form.Control.Feedback>
+                  <Form.Text className="text-muted">
+                    Leave empty if product doesn't expire
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
+
             {currentBranch && (
               <div className="alert alert-light mt-3">
                 <i className="fa fa-building me-2" />
@@ -273,7 +321,7 @@ const EditStock = ({
             variant="primary"
             onClick={handleEditStock}
             disabled={
-              
+              creatingStock ||
               !stockData.product_id ||
               !stockData.stock_quantity ||
               !stockData.unit_price ||

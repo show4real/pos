@@ -9,8 +9,34 @@ import { getTransactionDetails } from "../../services/posOrderService";
 import moment from "moment";
 import TransactionPrintComponent from "./TransactionPrintComponent";
 
+
 // Thermal Print Component for 80mm thermal printer
 class ThermalPrintComponent extends Component {
+  // Helper method to consolidate products with same id and price
+  consolidateProducts = (transaction_detail) => {
+    if (!transaction_detail || !Array.isArray(transaction_detail)) {
+      return [];
+    }
+
+    const consolidated = {};
+    
+    transaction_detail.forEach(item => {
+      // Create a unique key based on product ID and selling price
+      const key = `${item.product_id || item.id || item.product_name}_${item.selling_price}`;
+      
+      if (consolidated[key]) {
+        // If item already exists, add to quantity
+        consolidated[key].qty_sold += item.qty_sold;
+      } else {
+        // If new item, create a copy
+        consolidated[key] = { ...item };
+      }
+    });
+
+    // Convert back to array
+    return Object.values(consolidated);
+  };
+
   render() {
     const { 
       transaction_detail, 
@@ -25,6 +51,9 @@ class ThermalPrintComponent extends Component {
       prev_balance,
       total_balance 
     } = this.props;
+
+    // Consolidate products with same ID and price
+    const consolidatedItems = this.consolidateProducts(transaction_detail);
 
     return (
       <div className="thermal-print-container" style={{ display: 'none' }}>
@@ -103,7 +132,7 @@ class ThermalPrintComponent extends Component {
             <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '5px', textAlign: 'center' }}>
               ITEMS PURCHASED
             </div>
-            {transaction_detail.map((item, index) => (
+            {consolidatedItems.map((item, index) => (
               <div key={index} style={{ marginBottom: '8px', fontSize: '10px' }}>
                 <div style={{ fontWeight: 'bold' }}>
                   {item.product_name}
@@ -112,11 +141,11 @@ class ThermalPrintComponent extends Component {
                   <span>{item.qty_sold} x {(company?.currency || '')} {this.props.formatNumber(item.selling_price)}</span>
                   <span>{(company?.currency || '')} {this.props.formatNumber(item.qty_sold * item.selling_price)}</span>
                 </div>
-                {item.supplier_name && (
+                {/* {item.supplier_name && (
                   <div style={{ fontSize: '9px', color: '#666', marginTop: '1px' }}>
                     Supplier: {item.supplier_name}
                   </div>
-                )}
+                )} */}
               </div>
             ))}
           </div>
@@ -379,6 +408,8 @@ export class TransactionDetail extends Component {
           delivery_fee ={delivery_fee}
           discount = {discount}
         />
+
+        
 
         <ThermalPrintComponent
           transaction_detail={transaction_detail}

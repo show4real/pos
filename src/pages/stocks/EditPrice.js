@@ -23,6 +23,7 @@ export class EditPrice extends Component {
             add_quantity: 0,
             subtract_quantity: 0,
             unit_selling_price: props.stock.unit_selling_price || 0,
+            expiry_date: props.stock.expiry_date || '',
             submitted: false,
         };
 
@@ -55,12 +56,37 @@ export class EditPrice extends Component {
         });
     };
 
+    // Format date for display
+    formatDateForDisplay = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toISOString().split('T')[0];
+    };
+
+    // Check if expiry date is in the past or soon to expire
+    getExpiryStatus = (expiryDate) => {
+        if (!expiryDate) return null;
+        
+        const today = new Date();
+        const expiry = new Date(expiryDate);
+        const daysUntilExpiry = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+        
+        if (daysUntilExpiry < 0) {
+            return { status: 'expired', days: Math.abs(daysUntilExpiry), color: 'danger' };
+        } else if (daysUntilExpiry <= 30) {
+            return { status: 'expiring-soon', days: daysUntilExpiry, color: 'warning' };
+        } else {
+            return { status: 'valid', days: daysUntilExpiry, color: 'success' };
+        }
+    };
+
     handleSave = async () => {
         const { 
             quantity_operation, 
             add_quantity, 
             subtract_quantity, 
             unit_selling_price, 
+            expiry_date,
             id 
         } = this.state;
         
@@ -71,13 +97,25 @@ export class EditPrice extends Component {
             return;
         }
 
-        if (!currentQuantity || currentQuantity <= 0) {
-            toast.error(`Please enter a valid quantity to ${quantity_operation}`);
+        // Allow 0 quantity - only validate if quantity is negative
+        if (currentQuantity < 0) {
+            toast.error(`Quantity cannot be negative`);
             return;
         }
 
+        // Validate expiry date if provided
+        if (expiry_date) {
+            const expiryStatus = this.getExpiryStatus(expiry_date);
+            if (expiryStatus?.status === 'expired') {
+                const proceed = window.confirm(
+                    `Warning: The expiry date is ${expiryStatus.days} days in the past. Do you want to continue?`
+                );
+                if (!proceed) return;
+            }
+        }
+
         // Check if subtract operation would result in negative stock
-        if (quantity_operation === 'subtract' && this.props.stock.stock_quantity) {
+        if (quantity_operation === 'subtract' && this.props.stock.stock_quantity && currentQuantity > 0) {
             const remainingStock = this.props.stock.stock_quantity - parseFloat(subtract_quantity);
             if (remainingStock < 0) {
                 toast.error(`Cannot subtract ${subtract_quantity}. Only ${this.props.stock.stock_quantity} items in stock.`);
@@ -92,22 +130,27 @@ export class EditPrice extends Component {
                 id: id,
                 stock_quantity: parseFloat(currentQuantity),
                 quantity_operation: quantity_operation, // Send operation type to backend
-                unit_selling_price: parseFloat(unit_selling_price)
+                unit_selling_price: parseFloat(unit_selling_price),
+                expiry_date: expiry_date || null
             };
 
             const response = await editPriceWithQty(payload);
             this.props.toggle()
             
             if (response && response.success) {
-                const action = quantity_operation === 'add' ? 'added' : 'subtracted';
-                this.showToast(`Price updated and ${currentQuantity} items ${action} successfully!`);
+                let message = "Price and expiry date updated successfully!";
+                if (currentQuantity > 0) {
+                    const action = quantity_operation === 'add' ? 'added' : 'subtracted';
+                    message = `Price updated, ${currentQuantity} items ${action}, and expiry date updated successfully!`;
+                }
+                this.showToast(message);
                 this.props.toggle();
             } else {
-                toast.error(response?.message || "Failed to update price and quantity");
+                toast.error(response?.message || "Failed to update price, quantity, and expiry date");
             }
         } catch (error) {
             console.error("Error updating price:", error);
-            toast.error("An error occurred while updating price and quantity");
+            toast.error("An error occurred while updating price, quantity, and expiry date");
         } finally {
             this.setState({ saving: false });
         }
@@ -126,10 +169,13 @@ export class EditPrice extends Component {
             add_quantity, 
             subtract_quantity,
             unit_selling_price, 
+            expiry_date,
             submitted 
         } = this.state;
 
         const currentQuantity = quantity_operation === 'add' ? add_quantity : subtract_quantity;
+        const currentExpiryStatus = this.getExpiryStatus(stock?.expiry_date);
+        const newExpiryStatus = this.getExpiryStatus(expiry_date);
 
         return (
             <>
@@ -139,13 +185,13 @@ export class EditPrice extends Component {
                     className="modal-dialog modal-dialog-centered"
                     isOpen={stock != null}
                     toggle={() => !loading && !saving && toggle()}
-                    style={{ maxWidth: 700 }}
+                    style={{ maxWidth: 800 }}
                 >
                     {/* Modal Header */}
                     <div className="modal-header border-bottom" style={{ padding: "1.5rem" }}>
                         <h4 className="modal-title mb-0 text-primary">
                             <i className="fas fa-edit me-2"></i>
-                            Edit Price and Quantity
+                            Edit Price, Quantity & Expiry Date
                         </h4>
                         <button
                             type="button"
@@ -196,13 +242,28 @@ export class EditPrice extends Component {
                             {/* Current Stock Info */}
                             {stock && (
                                 <div className="alert alert-light border mb-4">
-                                    <div className="d-flex align-items-center">
-                                        <i className="fas fa-info-circle text-info me-2"></i>
-                                        <div>
-                                            <strong className="text-dark">Current Stock:</strong>
-                                            <span className="ms-2 badge bg-secondary">{stock.stock_quantity || 0} items</span>
-                                            <span className="ms-3"><strong>Current Price:</strong> NGN {stock.unit_selling_price || 0}</span>
+                                    <div className="d-flex align-items-center justify-content-between flex-wrap">
+                                        <div className="d-flex align-items-center">
+                                            <i className="fas fa-info-circle text-info me-2"></i>
+                                            <div>
+                                                <strong className="text-dark">Current Stock:</strong>
+                                                <span className="ms-2 badge bg-secondary">{stock.stock_quantity || 0} items</span>
+                                                <span className="ms-3"><strong>Current Price:</strong> NGN {stock.unit_selling_price || 0}</span>
+                                            </div>
                                         </div>
+                                        {stock.expiry_date && currentExpiryStatus && (
+                                            <div className="mt-2 mt-md-0">
+                                                <span className={`badge bg-${currentExpiryStatus.color}`}>
+                                                    <i className="fas fa-calendar-alt me-1"></i>
+                                                    {currentExpiryStatus.status === 'expired' 
+                                                        ? `Expired ${currentExpiryStatus.days} days ago`
+                                                        : currentExpiryStatus.status === 'expiring-soon'
+                                                        ? `Expires in ${currentExpiryStatus.days} days`
+                                                        : `Valid for ${currentExpiryStatus.days} days`
+                                                    }
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -263,7 +324,7 @@ export class EditPrice extends Component {
                                                 onChange={this.onInputChange}
                                                 placeholder="Enter quantity to add"
                                                 className="form-control"
-                                                min="1"
+                                                min="0"
                                                 step="1"
                                                 disabled={saving || loading}
                                             />
@@ -275,16 +336,16 @@ export class EditPrice extends Component {
                                                 onChange={this.onInputChange}
                                                 placeholder="Enter quantity to remove"
                                                 className="form-control"
-                                                min="1"
+                                                min="0"
                                                 max={stock?.stock_quantity || 999999}
                                                 step="1"
                                                 disabled={saving || loading}
                                             />
                                         )}
-                                        {submitted && (!currentQuantity || currentQuantity <= 0) && (
+                                        {submitted && currentQuantity < 0 && (
                                             <small className="text-danger">
                                                 <i className="fas fa-exclamation-triangle me-1"></i>
-                                                Valid quantity is required
+                                                Quantity cannot be negative
                                             </small>
                                         )}
                                         {quantity_operation === 'subtract' && stock?.stock_quantity && subtract_quantity > stock.stock_quantity && (
@@ -322,6 +383,37 @@ export class EditPrice extends Component {
                                 </Col>
                             </Row>
 
+                            {/* Expiry Date Row */}
+                            <Row className="mb-3">
+                                <Col md={12}>
+                                    <div className="form-group">
+                                        <label className="form-label fw-bold">
+                                            <i className="fas fa-calendar-alt me-2 text-muted"></i>
+                                            Expiry Date
+                                        </label>
+                                        <Input
+                                            type="date"
+                                            name="expiry_date"
+                                            value={this.formatDateForDisplay(expiry_date)}
+                                            onChange={this.onInputChange}
+                                            className="form-control"
+                                            disabled={saving || loading}
+                                        />
+                                        {newExpiryStatus && expiry_date && (
+                                            <small className={`text-${newExpiryStatus.color}`}>
+                                                <i className={`fas ${newExpiryStatus.status === 'expired' ? 'fa-exclamation-triangle' : 'fa-info-circle'} me-1`}></i>
+                                                {newExpiryStatus.status === 'expired' 
+                                                    ? `This date is ${newExpiryStatus.days} days in the past`
+                                                    : newExpiryStatus.status === 'expiring-soon'
+                                                    ? `This product will expire in ${newExpiryStatus.days} days`
+                                                    : `Product will be valid for ${newExpiryStatus.days} days`
+                                                }
+                                            </small>
+                                        )}
+                                    </div>
+                                </Col>
+                            </Row>
+
                             {/* Preview of changes */}
                             {currentQuantity > 0 && stock && (
                                 <div className={`alert ${quantity_operation === 'add' ? 'alert-success' : 'alert-warning'} border-0`}>
@@ -338,6 +430,11 @@ export class EditPrice extends Component {
                                                     }
                                                 </strong> items
                                             </span>
+                                            {expiry_date && (
+                                                <span className="ms-3">
+                                                    | Expiry: <strong>{new Date(expiry_date).toLocaleDateString()}</strong>
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

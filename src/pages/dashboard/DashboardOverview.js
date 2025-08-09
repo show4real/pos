@@ -162,7 +162,7 @@ export class DashboardOverview extends Component {
                 textShadow: '0 2px 4px rgba(0,0,0,0.3)'
               }}
             >
-              {user?.branch_name || 'Dashboard'}
+              {/* {user?.branch_name || 'Dashboard'} */}
             </Title>
             <Button 
               type="primary" 
