@@ -19,6 +19,7 @@ import SpinDiv from "../components/SpinDiv";
 import "antd/dist/antd.css";
 import { Pagination } from "antd";
 import ReactDatetime from "react-datetime";
+import SearchableDropdown from "./SearchableDropdown";
 
 export class SalesOrderIndex extends Component {
   constructor(props) {
@@ -29,11 +30,11 @@ export class SalesOrderIndex extends Component {
       page: 1,
       rows: 10,
       total: 0,
-      
+
       // Loading states
       loading: false,
       exportLoading: false,
-      
+
       // Filter states
       showFilter: false,
       order: "",
@@ -41,20 +42,20 @@ export class SalesOrderIndex extends Component {
       user: "",
       fromdate: moment().startOf("month"),
       todate: moment().endOf("day"),
-      
+
       // Data
       pos_sales: [],
       products: [],
       users: [],
-      
+
       // Product totals
       total_instock: 0,
       total_sold: 0,
       total_amount: 0,
-      
+
       // User info
       u: this.getUserFromStorage(),
-      
+
       // Error handling
       error: null,
     };
@@ -91,7 +92,7 @@ export class SalesOrderIndex extends Component {
       error: { color: "error" },
       warning: { color: "warning" },
     };
-    
+
     toast(
       <div style={{ padding: 20, color: toastConfig[type]?.color || "success" }}>
         {msg}
@@ -105,9 +106,9 @@ export class SalesOrderIndex extends Component {
   // API Methods
   getPosTransactions = async () => {
     const { page, rows, order, todate, fromdate, search, user, product } = this.state;
-    
+
     this.setState({ loading: true, error: null });
-    
+
     try {
       const response = await getPosTransactions({
         page,
@@ -129,7 +130,7 @@ export class SalesOrderIndex extends Component {
           // Update product totals from response
           total_instock: response.total_instock || 0,
           total_sold: response.total_sold || 0,
-          total_amount: response.total || 0,
+          total_amount: response.total_sales || 0,
           error: null,
         });
       } else {
@@ -153,10 +154,10 @@ export class SalesOrderIndex extends Component {
 
   getProducts = async () => {
     this.setState({ loading: true });
-    
+
     try {
       const response = await getProducts();
-      
+
       if (response && response.products) {
         this.setState({
           loading: false,
@@ -179,7 +180,7 @@ export class SalesOrderIndex extends Component {
   // Export functionality
   export = async () => {
     const { page, total, order, todate, fromdate, search, user, product } = this.state;
-    
+
     if (total < 1) {
       this.showErrorToast("No transactions available to export.");
       return;
@@ -216,7 +217,7 @@ export class SalesOrderIndex extends Component {
 
       this.generateExcelFile(exportData, fromdate, todate);
       this.showSuccessToast("Export completed successfully!");
-      
+
     } catch (error) {
       console.error("Error exporting data:", error);
       this.showErrorToast("Failed to export data. Please try again.");
@@ -229,7 +230,7 @@ export class SalesOrderIndex extends Component {
     try {
       const headers = [
         "cashier",
-        "branch", 
+        "branch",
         "product",
         "quantity",
         "price",
@@ -237,24 +238,24 @@ export class SalesOrderIndex extends Component {
         "purchase_id",
         "created_on",
       ];
-      
+
       const columnWidths = [30, 20, 15, 20, 40, 20, 20, 20];
       const cols = columnWidths.map((width) => ({ wch: width }));
-      
-      const sheetData = exportData.map((item) => 
+
+      const sheetData = exportData.map((item) =>
         headers.map((header) => item[header])
       );
-      
+
       const allData = [headers].concat(sheetData);
       const worksheet = XLSX.utils.aoa_to_sheet(allData);
       const workbook = XLSX.utils.book_new();
-      
+
       worksheet["!cols"] = cols;
       XLSX.utils.book_append_sheet(workbook, worksheet, "Sales");
-      
+
       const filename = `Sales-data-from-${moment(fromdate).format("YYYY-MM-DD")}-to-${moment(todate).format("YYYY-MM-DD")}.xlsx`;
       XLSX.writeFile(workbook, filename);
-      
+
     } catch (error) {
       console.error("Error generating Excel file:", error);
       throw new Error("Failed to generate Excel file");
@@ -263,24 +264,9 @@ export class SalesOrderIndex extends Component {
 
   // Calculation methods
   totalSales = () => {
-    const { pos_sales } = this.state;
-    
-    if (!Array.isArray(pos_sales) || pos_sales.length === 0) {
-      return this.formatCurrency(0);
-    }
+    const { total_amount } = this.state;
 
-    try {
-      const total = pos_sales.reduce((sum, sale) => {
-        const quantity = sale.qty_sold || 0;
-        const price = sale.order?.unit_selling_price || 0;
-        return sum + (quantity * price);
-      }, 0);
-
-      return this.formatCurrency(total);
-    } catch (error) {
-      console.error("Error calculating total sales:", error);
-      return this.formatCurrency(0);
-    }
+     return this.formatCurrency(total_amount);
   };
 
   formatCurrency = (amount) => {
@@ -288,7 +274,7 @@ export class SalesOrderIndex extends Component {
       if (amount === null || amount === undefined || isNaN(amount)) {
         return "₦0";
       }
-      
+
       const parts = amount.toString().split(".");
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
       return `₦${parts.join(".")}`;
@@ -314,7 +300,7 @@ export class SalesOrderIndex extends Component {
   toggleFilter = async () => {
     const { showFilter } = this.state;
     this.setState({ showFilter: !showFilter });
-    
+
     if (!showFilter) {
       await this.getProducts();
     }
@@ -332,7 +318,7 @@ export class SalesOrderIndex extends Component {
 
   onFilter = async (value, filterType) => {
     try {
-      await this.setState({ 
+      await this.setState({
         [filterType]: value,
         page: 1 // Reset to first page when filtering
       });
@@ -377,9 +363,9 @@ export class SalesOrderIndex extends Component {
         </Alert.Heading>
         <p className="mb-0">{error}</p>
         <hr />
-        <Button 
-          variant="outline-danger" 
-          size="sm" 
+        <Button
+          variant="outline-danger"
+          size="sm"
           onClick={() => this.setState({ error: null })}
         >
           Dismiss
@@ -390,13 +376,13 @@ export class SalesOrderIndex extends Component {
 
   renderProductTotalCards = () => {
     const { product, total_instock, total_sold, total_amount } = this.state;
-    
+
     // Only show totals when a specific product is selected
     if (!product) return null;
 
     return (
       <Row className="mb-4">
-         <Col md={4}>
+        <Col md={4}>
           <Card className="border-success">
             <Card.Body className="text-center">
               <div className="d-flex align-items-center justify-content-center mb-2">
@@ -422,7 +408,7 @@ export class SalesOrderIndex extends Component {
             </Card.Body>
           </Card>
         </Col>
-        
+
         <Col md={4}>
           <Card className="border-warning">
             <Card.Body className="text-center">
@@ -436,15 +422,15 @@ export class SalesOrderIndex extends Component {
             </Card.Body>
           </Card>
         </Col>
-        
-       
+
+
       </Row>
     );
   };
 
   renderFilterSection = () => {
     const { showFilter, order, product, user, products, users, u } = this.state;
-    
+
     if (!showFilter) return null;
 
     return (
@@ -483,25 +469,17 @@ export class SalesOrderIndex extends Component {
                 </Form.Select>
               </Form.Group>
             </Col>
-            
+
             <Col md={4}>
-              <Form.Group>
-                <Form.Label className="fw-semibold">
-                  <i className="fas fa-box me-1"></i>
-                  Product
-                </Form.Label>
-                <Form.Select
-                  value={product}
-                  onChange={(e) => this.onFilter(e.target.value, "product")}
-                >
-                  <option value="">All Products</option>
-                  {products.map((p) => (
-                    <option value={p.id} key={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
+              <SearchableDropdown
+                value={product}
+                onChange={(value) => this.onFilter(value, "product")}
+                options={products}
+                label="Product"
+                icon="fas fa-box"
+                placeholder="Search products..."
+                allOptionText="All Products"
+              />
             </Col>
 
             {u?.admin === 1 && (
@@ -680,7 +658,7 @@ export class SalesOrderIndex extends Component {
                   </span>
                 </div>
               </Col>
-              
+
               <Col md={2}>
                 <Form.Group>
                   <Form.Label className="fw-semibold">From Date</Form.Label>
@@ -717,7 +695,7 @@ export class SalesOrderIndex extends Component {
                 </Form.Group>
               </Col>
 
-             
+
               {/* <Col md={2}>
                 <Form.Group>
                   <Form.Label className="fw-semibold">Search</Form.Label>
@@ -757,7 +735,7 @@ export class SalesOrderIndex extends Component {
                   <span className="h6">{this.totalSales()}</span>
                 </div>
               </Col>
-              
+
             </Row>
           </Card.Body>
         </Card>
@@ -768,13 +746,13 @@ export class SalesOrderIndex extends Component {
         <Card className="shadow-sm border-0">
           <Card.Body className="p-0">
             {this.renderSalesTable()}
-            
+
             {/* Pagination */}
             {pos_sales.length > 0 && (
               <div className="d-flex justify-content-center p-3 border-top">
                 <Pagination
                   total={total}
-                  showTotal={(total, range) => 
+                  showTotal={(total, range) =>
                     `Showing ${range[0]}-${range[1]} of ${total} Sales`
                   }
                   onChange={this.onPage}

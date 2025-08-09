@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Pagination } from "antd";
-import { Col, Row, Card, Table, Button, Spinner, Alert } from "@themesberg/react-bootstrap";
+import { Col, Row, Card, Table, Button, Spinner, Alert, ButtonGroup } from "@themesberg/react-bootstrap";
 import moment from "moment";
 import { getCompany } from "../../services/companyService";
 import { useParams } from "react-router-dom";
@@ -17,13 +17,15 @@ const ClientPayments = () => {
     last_paid: 0,
     // Remove inconsistent fields to avoid confusion
   });
-  const [pagination, setPagination] = useState({ rows: 20000, page: 1 });
+  const [pagination, setPagination] = useState({ rows: 10, page: 1 });
   const [loading, setLoading] = useState(false);
   const [company, setCompany] = useState({});
   const [error, setError] = useState(null);
   
   const printRef = useRef();
   const { id } = useParams();
+  const thermalPrintRef = useRef();
+  const a4PrintRef = useRef();
   
   // Get user from localStorage with error handling
   const user = React.useMemo(() => {
@@ -42,62 +44,6 @@ const ClientPayments = () => {
     return parts.join(".");
   }, []);
 
-  // Calculate totals from invoice data
-  const calculateTotals = useCallback((invoicesData) => {
-    if (!invoicesData || !Array.isArray(invoicesData)) {
-      return {
-        totalPurchases: 0,
-        totalPaid: 0,
-        currentBalance: 0,
-        previousBalance: 0,
-        lastPaymentAmount: 0
-      };
-    }
-
-    let totalPurchases = 0;
-    let allPayments = [];
-
-    // First pass: collect all invoice amounts and payments
-    invoicesData.forEach(invoice => {
-      // Sum up all invoice amounts (total purchases)
-      totalPurchases += parseFloat(invoice.amount || 0);
-      
-      // Collect all individual payments with dates
-      if (invoice.payments && Array.isArray(invoice.payments)) {
-        invoice.payments.forEach(payment => {
-          allPayments.push({
-            amount: parseFloat(payment.amount_paid || 0),
-            date: new Date(payment.created_at),
-            invoice_num: payment.invoice_num
-          });
-        });
-      }
-    });
-
-    // Sort payments by date (newest first)
-    allPayments.sort((a, b) => b.date - a.date);
-
-    // Calculate total paid (sum of all payments)
-    const totalPaid = allPayments.reduce((sum, payment) => sum + payment.amount, 0);
-
-    // Get the most recent payment
-    const lastPaymentAmount = allPayments.length > 0 ? allPayments[0].amount : 0;
-
-    // Calculate current balance
-    const currentBalance = totalPurchases - totalPaid;
-
-    // Calculate previous balance (excluding the most recent payment)
-    const totalPaidExcludingLast = totalPaid - lastPaymentAmount;
-    const previousBalance = totalPurchases - totalPaidExcludingLast;
-
-    return {
-      totalPurchases,
-      totalPaid,
-      currentBalance,
-      previousBalance,
-      lastPaymentAmount
-    };
-  }, []);
 
   // Fetch company details
   const fetchCompany = useCallback(async () => {
@@ -140,17 +86,14 @@ const ClientPayments = () => {
 
       const result = await response.json();
       
-      // Calculate totals from the received data
-      const totals = calculateTotals(result.client_invoices_payments?.data);
       
-      // Update state with calculated totals (prioritize calculated values)
       setData({
         ...result,
-        total_amount: totals.totalPurchases,
-        total_paid: totals.totalPaid,
-        last_paid: totals.lastPaymentAmount,
-        current_balance: totals.currentBalance,
-        previous_balance: totals.previousBalance,
+        total_amount: result.total_amount,
+        total_paid: result.total_paid,
+        last_paid: result.last_paid,
+        current_balance: result.total_balance,
+        previous_balance: result.prev_balance,
       });
     } catch (error) {
       console.error("Error fetching client payments:", error);
@@ -158,7 +101,7 @@ const ClientPayments = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.token, id, pagination, calculateTotals]);
+  }, [user?.token, id, pagination]);
 
   // Handle pagination changes
   const handlePageChange = useCallback((page, pageSize = pagination.rows) => {
@@ -182,8 +125,8 @@ const ClientPayments = () => {
   const totalPurchases = parseFloat(data.total_amount || 0);
   const totalPaid = parseFloat(data.total_paid || 0);
   const lastPaid = parseFloat(data.last_paid || 0);
-  const currentBalance = parseFloat(data.current_balance || 0);
-  const previousBalance = parseFloat(data.previous_balance || 0);
+  const currentBalance = parseFloat(data.total_balance || 0);
+  const previousBalance = parseFloat(data.prev_balance || 0);
 
   // Loading state
   if (loading && !hasPayments) {
@@ -204,6 +147,7 @@ const ClientPayments = () => {
       {/* Hidden Invoice for Printing */}
       <div style={{ display: "none" }}>
         {hasPayments && (
+          <>
           <InvoiceBalance
             invoice={firstInvoice}
             company={company}
@@ -216,6 +160,20 @@ const ClientPayments = () => {
             ref={printRef}
             toggle={() => setData(prev => ({ ...prev }))}
           />
+          <InvoiceBalance
+            format="A4"
+            invoice={firstInvoice}
+            company={company}
+            total_balance={currentBalance}
+            prev_balance={previousBalance}
+            last_paid={lastPaid}
+            total_amount={totalPurchases}
+            total_paid={totalPaid}
+            user={user}
+            ref={a4PrintRef}
+            toggle={() => setData(prev => ({ ...prev }))}
+          />
+          </>
         )}
       </div>
 
@@ -227,7 +185,8 @@ const ClientPayments = () => {
                 Customer Payment Summary
               </Card.Title>
               {hasPayments && (
-                <ReactToPrint
+                <ButtonGroup>
+                  <ReactToPrint
                   trigger={() => (
                     <Button variant="outline-success" size="sm">
                       <i className="fas fa-print me-2"></i>
@@ -235,7 +194,20 @@ const ClientPayments = () => {
                     </Button>
                   )}
                   content={() => printRef.current}
+                  pageStyle="@page { size: 80mm auto; margin: 5mm; }"
                 />
+                <ReactToPrint
+            trigger={() => (
+              <Button variant="outline-primary" size="sm">
+                <i className="fas fa-print me-2"></i>
+                Print A4
+              </Button>
+            )}
+            content={() => a4PrintRef.current}
+            pageStyle="@page { size: A4; margin: 20mm; }"
+          />
+                </ButtonGroup>
+                
               )}
             </div>
 
