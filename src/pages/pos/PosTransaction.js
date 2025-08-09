@@ -439,6 +439,21 @@ export class PosTransaction extends Component {
                           >
                             Edit
                           </Button>
+                          <Button
+                              variant="outline-primary"
+                              style={{
+                                fontWeight: "bold",
+                                textTransform: "capitalize",
+                              }}
+                              onClick={() => {
+                                this.props.history.push(
+                                  "/client/payments/" + transaction?.invoice.client_id
+                                );
+                              }}
+                              size="sm"
+                            >
+                              Payments
+                            </Button>
                           </ButtonGroup>
                         </td>
                       </tr>

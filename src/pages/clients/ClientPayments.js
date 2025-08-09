@@ -7,6 +7,8 @@ import { useParams } from "react-router-dom";
 import InvoiceBalance from "./InvoiceBalance";
 import ReactToPrint from "react-to-print";
 import settings from "../../services/settings";
+import AddPayment from "../invoice/AddPayment";
+import EditPayment from "../invoice/EditPayment";
 
 const ClientPayments = () => {
   // State management
@@ -15,18 +17,21 @@ const ClientPayments = () => {
     total_amount: 0,
     total_paid: 0,
     last_paid: 0,
-    // Remove inconsistent fields to avoid confusion
   });
   const [pagination, setPagination] = useState({ rows: 10, page: 1 });
   const [loading, setLoading] = useState(false);
   const [company, setCompany] = useState({});
   const [error, setError] = useState(null);
-  
+  const [addPayment, setAddPayment] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [editPayment, setEditPayment] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+
   const printRef = useRef();
   const { id } = useParams();
   const thermalPrintRef = useRef();
   const a4PrintRef = useRef();
-  
+
   // Get user from localStorage with error handling
   const user = React.useMemo(() => {
     try {
@@ -36,6 +41,32 @@ const ClientPayments = () => {
     }
   }, []);
 
+  const toggleAddPayment = (invoice = null) => {
+    setSelectedInvoice(invoice);
+    setAddPayment(true);
+  };
+
+  const toggleEditPayment = (payment = null, invoice = null) => {
+    setSelectedPayment(payment);
+    setSelectedInvoice(invoice);
+    setEditPayment(true);
+  };
+
+  const handlePaymentModalClose = () => {
+    setAddPayment(false);
+    setSelectedInvoice(null);
+    // Reload payments data after modal closes
+    fetchPayments();
+  };
+
+  const handleEditPaymentModalClose = () => {
+    setEditPayment(false);
+    setSelectedPayment(null);
+    setSelectedInvoice(null);
+    // Reload payments data after modal closes
+    fetchPayments();
+  };
+
   // Utility function for currency formatting
   const formatCurrency = useCallback((amount) => {
     if (amount == null || amount === 0) return "0";
@@ -43,7 +74,6 @@ const ClientPayments = () => {
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     return parts.join(".");
   }, []);
-
 
   // Fetch company details
   const fetchCompany = useCallback(async () => {
@@ -85,8 +115,7 @@ const ClientPayments = () => {
       }
 
       const result = await response.json();
-      
-      
+
       setData({
         ...result,
         total_amount: result.total_amount,
@@ -120,7 +149,7 @@ const ClientPayments = () => {
   // Computed values with proper fallbacks
   const hasPayments = data.client_invoices_payments?.data?.length > 0;
   const firstInvoice = hasPayments ? data.client_invoices_payments.data[0] : null;
-  
+
   // Use calculated values directly
   const totalPurchases = parseFloat(data.total_amount || 0);
   const totalPaid = parseFloat(data.total_paid || 0);
@@ -148,34 +177,56 @@ const ClientPayments = () => {
       <div style={{ display: "none" }}>
         {hasPayments && (
           <>
-          <InvoiceBalance
-            invoice={firstInvoice}
-            company={company}
-            total_balance={currentBalance}
-            prev_balance={previousBalance}
-            last_paid={lastPaid}
-            total_amount={totalPurchases}
-            total_paid={totalPaid}
-            user={user}
-            ref={printRef}
-            toggle={() => setData(prev => ({ ...prev }))}
-          />
-          <InvoiceBalance
-            format="A4"
-            invoice={firstInvoice}
-            company={company}
-            total_balance={currentBalance}
-            prev_balance={previousBalance}
-            last_paid={lastPaid}
-            total_amount={totalPurchases}
-            total_paid={totalPaid}
-            user={user}
-            ref={a4PrintRef}
-            toggle={() => setData(prev => ({ ...prev }))}
-          />
+            <InvoiceBalance
+              invoice={firstInvoice}
+              company={company}
+              total_balance={currentBalance}
+              prev_balance={previousBalance}
+              last_paid={lastPaid}
+              total_amount={totalPurchases}
+              total_paid={totalPaid}
+              user={user}
+              ref={printRef}
+              toggle={() => setData(prev => ({ ...prev }))}
+            />
+            <InvoiceBalance
+              format="A4"
+              invoice={firstInvoice}
+              company={company}
+              total_balance={currentBalance}
+              prev_balance={previousBalance}
+              last_paid={lastPaid}
+              total_amount={totalPurchases}
+              total_paid={totalPaid}
+              user={user}
+              ref={a4PrintRef}
+              toggle={() => setData(prev => ({ ...prev }))}
+            />
           </>
         )}
       </div>
+
+      {/* Add Payment Modal */}
+      {addPayment && selectedInvoice && (
+        <AddPayment
+          saved={handlePaymentModalClose}
+          addPayment={addPayment}
+          payments={selectedInvoice.payments || []}
+          invoice={selectedInvoice}
+          toggle={handlePaymentModalClose}
+        />
+      )}
+
+      {/* Edit Payment Modal */}
+      {editPayment && selectedPayment && selectedInvoice && (
+        <EditPayment
+          saved={handleEditPaymentModalClose}
+          payment={selectedPayment}
+          payments={selectedInvoice.payments || []}
+          invoice={selectedInvoice}
+          toggle={handleEditPaymentModalClose}
+        />
+      )}
 
       <div className="container-fluid mt-5">
         <Card className="shadow-sm">
@@ -187,27 +238,26 @@ const ClientPayments = () => {
               {hasPayments && (
                 <ButtonGroup>
                   <ReactToPrint
-                  trigger={() => (
-                    <Button variant="outline-success" size="sm">
-                      <i className="fas fa-print me-2"></i>
-                      Print Balance
-                    </Button>
-                  )}
-                  content={() => printRef.current}
-                  pageStyle="@page { size: 80mm auto; margin: 5mm; }"
-                />
-                <ReactToPrint
-            trigger={() => (
-              <Button variant="outline-primary" size="sm">
-                <i className="fas fa-print me-2"></i>
-                Print A4
-              </Button>
-            )}
-            content={() => a4PrintRef.current}
-            pageStyle="@page { size: A4; margin: 20mm; }"
-          />
+                    trigger={() => (
+                      <Button variant="outline-success" size="sm">
+                        <i className="fas fa-print me-2"></i>
+                        Print Balance
+                      </Button>
+                    )}
+                    content={() => printRef.current}
+                    pageStyle="@page { size: 80mm auto; margin: 5mm; }"
+                  />
+                  <ReactToPrint
+                    trigger={() => (
+                      <Button variant="outline-primary" size="sm">
+                        <i className="fas fa-print me-2"></i>
+                        Print A4
+                      </Button>
+                    )}
+                    content={() => a4PrintRef.current}
+                    pageStyle="@page { size: A4; margin: 20mm; }"
+                  />
                 </ButtonGroup>
-                
               )}
             </div>
 
@@ -232,23 +282,23 @@ const ClientPayments = () => {
                     <div className="bg-light p-3 rounded">
                       <h6 className="text-muted mb-2">Financial Summary</h6>
                       <p className="mb-1">
-                        <strong>Total Purchases:</strong> 
+                        <strong>Total Purchases:</strong>
                         <span className="text-info ms-2">NGN {formatCurrency(totalPurchases)}</span>
                       </p>
                       <p className="mb-1">
-                        <strong>Total Paid:</strong> 
+                        <strong>Total Paid:</strong>
                         <span className="text-success ms-2">NGN {formatCurrency(totalPaid)}</span>
                       </p>
                       <p className="mb-1">
-                        <strong>Previous Balance:</strong> 
+                        <strong>Previous Balance:</strong>
                         <span className="text-warning ms-2">NGN {formatCurrency(previousBalance)}</span>
                       </p>
                       <p className="mb-1">
-                        <strong>Last Payment:</strong> 
+                        <strong>Last Payment:</strong>
                         <span className="text-primary ms-2">NGN {formatCurrency(lastPaid)}</span>
                       </p>
                       <p className="mb-0">
-                        <strong>Current Balance:</strong> 
+                        <strong>Current Balance:</strong>
                         <span className={`ms-2 fw-bold ${currentBalance > 0 ? 'text-danger' : currentBalance < 0 ? 'text-success' : 'text-muted'}`}>
                           NGN {currentBalance < 0 ? '-' : ''}{formatCurrency(Math.abs(currentBalance))}
                         </span>
@@ -266,7 +316,7 @@ const ClientPayments = () => {
           </Card.Body>
 
           {/* Pagination */}
-          {/* {data.client_invoices_payments?.total > 0 && (
+          {data.client_invoices_payments?.total > 0 && (
             <Card.Footer className="bg-white">
               <Row>
                 <Col className="d-flex justify-content-center">
@@ -282,16 +332,16 @@ const ClientPayments = () => {
                 </Col>
               </Row>
             </Card.Footer>
-          )} */}
+          )}
 
           {/* Invoice Data */}
           {data.client_invoices_payments?.data?.map((invoice, index) => {
             const invoiceBalance = parseFloat(invoice.amount || 0) - parseFloat(invoice.amount_paid || 0);
-            
+
             return (
               <Card.Body key={index} className={index > 0 ? "border-top" : ""}>
                 <div className="invoice-header bg-light rounded p-3 mb-3">
-                  <Row className="g-2">
+                  <Row className="g-2 align-items-center">
                     <Col sm={6} md={4} lg={2}>
                       <small className="text-muted d-block">Invoice No</small>
                       <strong className="text-primary">{invoice.invoice_no}</strong>
@@ -309,16 +359,27 @@ const ClientPayments = () => {
                     <Col sm={6} md={4} lg={2}>
                       <small className="text-muted d-block">Balance</small>
                       <strong className={invoiceBalance > 0 ? "text-danger" : invoiceBalance < 0 ? "text-success" : "text-muted"}>
-                        {invoice.currency}{invoiceBalance < 0 ? '-' : ''}{formatCurrency(invoiceBalance)}
+                        {invoice.currency}{invoiceBalance < 0 ? '-' : ''}{formatCurrency(Math.abs(invoiceBalance))}
                       </strong>
                     </Col>
-                    <Col sm={6} md={4} lg={2}>
+                    <Col sm={6} md={4} lg={1}>
                       <small className="text-muted d-block">Date</small>
                       <strong>{moment(invoice.created_at).format("MMM DD, YYYY")}</strong>
                     </Col>
                     <Col sm={6} md={4} lg={2}>
                       <small className="text-muted d-block">Cashier</small>
                       <strong>{invoice.cashier_name}</strong>
+                    </Col>
+                    <Col sm={12} md={4} lg={1} className="text-end">
+                      <Button
+                        variant="outline-primary"
+                        size="sm"
+                        onClick={() => toggleAddPayment(invoice)}
+                        //disabled={invoiceBalance <= 0}
+                      >
+                        <i className="fas fa-plus me-1"></i>
+                        New Payment
+                      </Button>
                     </Col>
                   </Row>
                 </div>
@@ -330,7 +391,7 @@ const ClientPayments = () => {
                         <th style={{ width: '60px' }}>No</th>
                         <th>Invoice No</th>
                         <th style={{ width: '150px' }}>Amount Paid</th>
-                        <th style={{ width: '150px' }}>Transaction Date</th>
+                        <th style={{ width: '180px' }}>Transaction Date</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -347,15 +408,27 @@ const ClientPayments = () => {
                               {invoice.currency}{formatCurrency(payment.amount_paid)}
                             </strong>
                           </td>
-                          <td className="text-muted">
-                            {moment(payment.created_at).format("MMM DD, YYYY")}
+                          <td>
+                            <div className="d-flex justify-content-between align-items-center">
+                              <span className="text-muted">
+                                {moment(payment.created_at).format("MMM DD, YYYY")}
+                              </span>
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                onClick={() => toggleEditPayment(payment, invoice)}
+                                className="ms-2"
+                              >
+                                <i className="fas fa-edit"></i>
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       )) || (
-                        <tr>
-                          <td colSpan="4" className="text-center text-muted">No payments recorded</td>
-                        </tr>
-                      )}
+                          <tr>
+                            <td colSpan="4" className="text-center text-muted">No payments recorded</td>
+                          </tr>
+                        )}
                     </tbody>
                   </Table>
                 </div>
