@@ -203,7 +203,7 @@ export class PosTransaction extends Component {
                     <div className="small text-white-50 mb-1">Total Sales</div>
                     <div className="h5 mb-0 fw-bold">{this.formatCurrency(total_sales)}</div>
                   </div>
-                  
+
                   <div className="bg-gradient-warning text-white rounded-3 p-3 shadow-sm">
                     <div className="small text-white-50 mb-1">Total Discount</div>
                     <div className="h5 mb-0 fw-bold">{this.formatCurrency(total_discount)}</div>
@@ -281,7 +281,7 @@ export class PosTransaction extends Component {
                     <Form.Label className="small fw-semibold text-muted mb-1">Search Transactions</Form.Label>
                     <div className="input-group">
                       <Input
-                        placeholder="Search by transaction ID, cashier..."
+                        placeholder="Search by transaction ID, cashier, customer..."
                         className="form-control-sm"
                         value={search}
                         onChange={(e) => this.onChange(e.target.value, "search")}
@@ -373,6 +373,9 @@ export class PosTransaction extends Component {
                         <i className="fas fa-user me-2 text-muted"></i>Cashier
                       </th>
                       <th className="border-0 fw-semibold text-dark py-3">
+                        <i className="fas fa-user me-2 text-muted"></i>Customer
+                      </th>
+                      <th className="border-0 fw-semibold text-dark py-3">
                         <i className="fas fa-hashtag me-2 text-muted"></i>Transaction ID
                       </th>
                       <th className="border-0 fw-semibold text-dark py-3">
@@ -403,6 +406,15 @@ export class PosTransaction extends Component {
                           </div>
                         </td>
                         <td className="py-3">
+                          <div className="d-flex align-items-center">
+                           
+                            <div className="fw-semibold text-dark">
+                              <div className="fw-semibold text-dark">{transaction.invoice.client_name}</div>
+
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3">
                           <code className="bg-light px-2 py-1 rounded text-dark">
                             {transaction.transaction_id}
                           </code>
@@ -422,24 +434,24 @@ export class PosTransaction extends Component {
                         <td className="py-3 text-center">
                           <ButtonGroup>
                             <Button
-                            variant="outline-primary"
-                            size="sm"
-                            className="d-flex align-items-center gap-1 mx-auto"
-                            onClick={() => this.toggleViewTransaction(transaction.transaction_id)}
-                          >
-                            <i className="fas fa-eye" style={{ fontSize: '12px' }}></i>
-                            View Details
-                          </Button>
-                           <Button
-                            variant="outline-primary"
-                            onClick={() => {
-                              this.props.history.push("/pos/" + transaction.invoice_id);
-                            }}
-                            size="sm"
-                          >
-                            Edit
-                          </Button>
-                          <Button
+                              variant="outline-primary"
+                              size="sm"
+                              className="d-flex align-items-center gap-1 mx-auto"
+                              onClick={() => this.toggleViewTransaction(transaction.transaction_id)}
+                            >
+                              <i className="fas fa-eye" style={{ fontSize: '12px' }}></i>
+                              View Details
+                            </Button>
+                            <Button
+                              variant="outline-primary"
+                              onClick={() => {
+                                this.props.history.push("/pos/" + transaction.invoice_id);
+                              }}
+                              size="sm"
+                            >
+                              Edit
+                            </Button>
+                            <Button
                               variant="outline-primary"
                               style={{
                                 fontWeight: "bold",
